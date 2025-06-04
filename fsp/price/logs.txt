@@ -1,0 +1,47 @@
+2025-06-04 19:19:40,429 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:19:40,431 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:19:40,696 [INFO] got moex price, its 313.56 - get_moex_price - 59
+2025-06-04 19:19:41,036 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:19:41,038 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:19:41,038 [INFO] got P/B, its 1.07 - get_price_score - 65
+2025-06-04 19:19:41,038 [INFO] index works - index - 82
+2025-06-04 19:43:16,375 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:43:16,721 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:43:16,722 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:43:18,501 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:43:18,503 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:43:18,850 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:43:19,162 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:43:19,666 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:43:19,668 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:43:19,668 [INFO] got P/B, its 1.07 - get_price_score - 65
+2025-06-04 19:43:19,668 [INFO] index works - index - 82
+2025-06-04 19:43:20,095 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:43:20,096 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:43:20,342 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:43:20,342 [INFO] thesis works - thesis - 92
+2025-06-04 19:43:22,085 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:43:22,266 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:43:22,268 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:43:22,488 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:43:22,490 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:43:22,712 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:43:23,125 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:43:23,125 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:43:23,126 [INFO] got P/B, its 1.07 - get_price_score - 65
+2025-06-04 19:43:23,126 [INFO] index works - index - 82
+2025-06-04 19:44:52,699 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:44:53,012 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:44:53,013 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:44:53,255 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:44:53,256 [INFO] thesis works - thesis - 92
+2025-06-04 19:44:54,584 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:44:54,962 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:44:54,964 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:44:55,153 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:44:55,155 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:44:55,380 [INFO] got moex price, its 313.2 - get_moex_price - 59
+2025-06-04 19:44:55,713 [INFO] parsed own capital, its 6 602 773 391 - parse_own_capital - 39
+2025-06-04 19:44:55,715 [INFO] got fair price, its 292.33 - get_fair_price - 46
+2025-06-04 19:44:55,715 [INFO] got P/B, its 1.07 - get_price_score - 65
+2025-06-04 19:44:55,715 [INFO] index works - index - 82

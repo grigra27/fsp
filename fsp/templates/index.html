@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <h5>Пытаемся найти справедливую стоимость акций {% include "includes/bank_name.txt" %}</h5>
+            <br>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-4">
+            <br><br>
+            <p>
+                Согласно индикатору P/B<br>
+                акции оценены</p>
+            <h2>{{ price_score }}</h2>
+        </div>
+        <div class="col-7">
+            <p><h1 class="display-4"><b>{{ fair_price }} рублей</b></h1>
+            такова справедливая оценка одной акции <mark>{% include "includes/bank_name.txt" %}</mark> исходя из 
+            оценки банка в 1 капитал (мультипликатор P/B = 1)
+            <br>
+            <small class="text-body-secondary">Почему 1 капитал?</small>
+            </p>
+            <br>
+            
+            <p>При этом на рынке акции стоят: <span class="h3">{{ moex_price }} рублей</span><br>
+            <small>такова цена одной акции <mark>{% include "includes/bank_name.txt" %}</mark> на Мосбирже </small>
+            </p>
+            <br><br>
+            <p>
+                <span>NB:</span>
+                Диапазон 1 - 1,2 капитала равен оценке акции <b>{{ fair_price }} - {{ fair_price_20_percent }} рублей</b><br>
+                <small class="text-body-secondary">Почему мы выбираем такой диапазон?</small>
+            </p>
+            <br><br><br>
+        </div>
+        <div class="col-1">
+
+        </div>
+    </div>
+</div>
+{% endblock %}

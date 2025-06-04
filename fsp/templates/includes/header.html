@@ -1,0 +1,22 @@
+<header>
+    <nav class="navbar navbar-light" style="background-color: lavender">
+    <div class="container">
+        <ul class="nav nav-pills">
+            {% with request.resolver_match.view_name as view_name %}
+            <li class="nav-item">
+                <a class="nav-link link-success {% if view_name == 'price:index' %} active bg-white {% endif %}" 
+                href="{% url 'price:index' %}">Оценка в моменте</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link link-success {% if view_name == 'price:thesis' %} active bg-white {% endif %}" 
+                href="{% url 'price:thesis' %}">Инвестиционный тезис</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link link-success {% if view_name == 'price:history_data' %} active bg-white {% endif %}" 
+                href="{% url 'price:history_data' %}">Исторические данные</a>
+            </li>
+            {% endwith %}
+        </ul>
+    </div>
+    </nav>
+</header>

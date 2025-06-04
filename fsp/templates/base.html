@@ -1,0 +1,21 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{% static 'css/bootstrap.css' %}">
+    <title>{% block title %} Fair Sber Price - оценка справеливой цены акций Сбербанка {% endblock %}</title>
+  </head>
+  <body>
+    <!-- header повторяется на всех страницах -->
+    {% include "includes/header.html" %}
+    <main>
+        <p>
+            {% block content %}Нет контента{% endblock %}
+        </p>
+    </main>
+    <!-- footer повторяется на всех страницах -->
+    {% include "includes/footer.html" %}
+  </body>
+</html>
