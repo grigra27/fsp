@@ -47,15 +47,17 @@ WORKDIR /app
 # Copy application code
 COPY fsp/ .
 
-# Create necessary directories with proper permissions
+# Create necessary directories and database file with proper permissions
 RUN mkdir -p logs staticfiles && \
+    touch /app/db.sqlite3 && \
+    chmod 664 /app/db.sqlite3 && \
     chown -R django:django /app
 
 # Collect static files with production settings (as root before switching user)
 RUN DJANGO_SETTINGS_MODULE=fsp.production python manage.py collectstatic --noinput
 
-# Ensure logs directory has correct permissions after collectstatic
-RUN chown -R django:django /app/logs /app/staticfiles
+# Ensure all files have correct permissions after collectstatic
+RUN chown -R django:django /app/logs /app/staticfiles /app/db.sqlite3
 
 # Switch to non-root user
 USER django

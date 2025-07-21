@@ -30,14 +30,17 @@ else:
 
 # Security settings for production
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    # SSL settings - disabled until SSL certificate is configured
+    SECURE_SSL_REDIRECT = False  # Set to True when SSL certificate is configured
+    SECURE_HSTS_SECONDS = 0  # Disable HSTS until SSL is configured
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    # Other security headers (safe to enable)
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Cookie security - disabled until HTTPS is configured
+    SESSION_COOKIE_SECURE = False  # Set to True when using HTTPS
+    CSRF_COOKIE_SECURE = False  # Set to True when using HTTPS
 
 # Sber Configuration
 SBER_STOCKS_QUANTITY = int(os.getenv('SBER_STOCKS_QUANTITY', '22586948000'))
