@@ -20,17 +20,29 @@ docker pull ghcr.io/grigra27/fair_sber_price-bot:latest
 
 # Проверяем переменные окружения
 echo "🔍 Проверка переменных окружения..."
-if [ -z "$TELEGRAM_BOT_TOKEN" ] && [ -f .env ]; then
+if [ -f .env ]; then
     source .env
 fi
 
+# Проверяем обязательные переменные
+missing_vars=""
 if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
-    echo "❌ TELEGRAM_BOT_TOKEN не найден в .env файле!"
+    missing_vars="$missing_vars TELEGRAM_BOT_TOKEN"
+fi
+if [ -z "$SECRET_KEY" ]; then
+    missing_vars="$missing_vars SECRET_KEY"
+fi
+if [ -z "$ALLOWED_HOSTS" ]; then
+    missing_vars="$missing_vars ALLOWED_HOSTS"
+fi
+
+if [ -n "$missing_vars" ]; then
+    echo "❌ Отсутствуют переменные окружения:$missing_vars"
     echo "Проверьте файл .env"
     exit 1
 fi
 
-echo "✅ TELEGRAM_BOT_TOKEN найден"
+echo "✅ Все необходимые переменные окружения найдены"
 
 # Проверяем доступность базы данных
 echo "🔍 Проверка базы данных..."

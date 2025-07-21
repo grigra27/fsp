@@ -20,8 +20,13 @@ if DEBUG:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
 else:
     ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '').split(',') if host.strip()]
-    if not ALLOWED_HOSTS:
-        raise RuntimeError("ALLOWED_HOSTS environment variable is required for production!")
+    # For Telegram bot, ALLOWED_HOSTS is not critical since it doesn't serve HTTP
+    # Check if we're running the bot command
+    import sys
+    is_bot_command = len(sys.argv) > 1 and 'runtelegrambot' in sys.argv[1]
+    
+    if not ALLOWED_HOSTS and not is_bot_command:
+        raise RuntimeError("ALLOWED_HOSTS environment variable is required for production web server!")
 
 # Security settings for production
 if not DEBUG:

@@ -206,6 +206,7 @@ jobs:
               environment:
                 - SECRET_KEY=${SECRET_KEY}
                 - DEBUG=False
+                - ALLOWED_HOSTS=${ALLOWED_HOSTS}
                 - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
                 - REDIS_URL=redis://redis:6379/0
                 - DJANGO_SETTINGS_MODULE=fsp.production
