@@ -4,15 +4,69 @@
 <div class="container">
     <div class="row">
         <div class="col-12">
-            <h5>thesis</h5>
-            <p>
-                <br><br>
-                <h3>
-                    P/B coef = {{ pb }}
-                </h3>
-                <br><br>
-                price now = {{ moex_price }}
-            </p>
+            <h5>Инвестиционный тезис</h5>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Текущие показатели</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>P/B коэффициент: <span class="badge bg-primary">{{ pb }}</span></h4>
+                            <p class="text-muted">Price-to-Book ratio</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Текущая цена: <span class="text-success">{{ moex_price }} ₽</span></h4>
+                            <p class="text-muted">Цена на Московской бирже</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Инвестиционный тезис</h6>
+                        </div>
+                        <div class="card-body">
+                            <h6>Почему этот банк?</h6>
+                            <ul>
+                                <li><strong>Лидер рынка:</strong> Крупнейший банк России с долей рынка ~30%</li>
+                                <li><strong>Стабильность:</strong> Государственная поддержка и системная значимость</li>
+                                <li><strong>Дивиденды:</strong> Высокая дивидендная доходность</li>
+                                <li><strong>Цифровизация:</strong> Инвестиции в IT и экосистему</li>
+                            </ul>
+
+                            <h6 class="mt-4">Оценка по P/B</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-success" style="width: 25%">Дешево (&lt;1.0)</div>
+                                <div class="progress-bar bg-info" style="width: 20%">Справедливо (1.0-1.2)</div>
+                                <div class="progress-bar bg-warning" style="width: 20%">Дорого (1.2-1.4)</div>
+                                <div class="progress-bar bg-danger" style="width: 35%">Очень дорого (&gt;1.4)</div>
+                            </div>
+                            <small class="text-muted">Текущий P/B: {{ pb }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Риски</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li>⚠️ Санкционные риски</li>
+                                <li>⚠️ Макроэкономическая нестабильность</li>
+                                <li>⚠️ Регулятивные изменения</li>
+                                <li>⚠️ Кредитные риски</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

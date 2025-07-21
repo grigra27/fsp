@@ -1,0 +1,11 @@
+# Production requirements - install these in addition to requirements.txt
+-r requirements.txt
+
+# Production web server
+gunicorn==21.2.0
+
+# Static files handling
+whitenoise==6.6.0
+
+# Redis cache (optional)
+redis==4.6.0

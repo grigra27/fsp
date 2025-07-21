@@ -2,43 +2,190 @@
 
 {% block content %}
 <div class="container">
+    <!-- Error Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
     <div class="row">
         <div class="col-12">
             <h5>Пытаемся найти справедливую стоимость акций {% include "includes/bank_name.txt" %}</h5>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">Последнее обновление: <span id="last-update">загрузка...</span></small>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshData()">
+                        <span id="refresh-icon">🔄</span> Обновить
+                    </button>
+                    <form method="post" action="{% url 'price:save_snapshot' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-success">💾 Сохранить снимок</button>
+                    </form>
+                </div>
+            </div>
             <br>
         </div>
     </div>
+    
     <div class="row">
         <div class="col-4">
             <br><br>
-            <p>
-                Согласно индикатору P/B<br>
-                акции оценены</p>
-            <h2>{{ price_score }}</h2>
+            <p>Согласно индикатору P/B<br>акции оценены</p>
+            <h2 id="price-score" class="price-score-{{ price_score|slugify }}">{{ price_score }}</h2>
+            <div class="mt-3">
+                <small class="text-muted">P/B коэффициент: <span id="pb-ratio">{{ pb_ratio|default:"загрузка..." }}</span></small>
+            </div>
         </div>
+        
         <div class="col-7">
-            <p><h1 class="display-4"><b>{{ fair_price }} рублей</b></h1>
-            такова справедливая оценка одной акции <mark>{% include "includes/bank_name.txt" %}</mark> исходя из 
-            оценки банка в 1 капитал (мультипликатор P/B = 1)
-            <br>
-            <small class="text-body-secondary">Почему 1 капитал?</small>
-            </p>
-            <br>
+            <div id="loading-spinner" class="text-center" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <p class="mt-2">Получаем актуальные данные...</p>
+            </div>
             
-            <p>При этом на рынке акции стоят: <span class="h3">{{ moex_price }} рублей</span><br>
-            <small>такова цена одной акции <mark>{% include "includes/bank_name.txt" %}</mark> на Мосбирже </small>
-            </p>
-            <br><br>
-            <p>
-                <span>NB:</span>
-                Диапазон 1 - 1,2 капитала равен оценке акции <b>{{ fair_price }} - {{ fair_price_20_percent }} рублей</b><br>
-                <small class="text-body-secondary">Почему мы выбираем такой диапазон?</small>
-            </p>
-            <br><br><br>
+            <div id="price-content">
+                <p>
+                    <h1 class="display-4">
+                        <b><span id="fair-price">{{ fair_price }}</span> рублей</b>
+                    </h1>
+                    такова справедливая оценка одной акции <mark>{% include "includes/bank_name.txt" %}</mark> исходя из 
+                    оценки банка в 1 капитал (мультипликатор P/B = 1)
+                    <br>
+                    <small class="text-body-secondary">
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#explanationModal">Почему 1 капитал?</a>
+                    </small>
+                </p>
+                <br>
+                
+                <p>
+                    При этом на рынке акции стоят: 
+                    <span class="h3" id="moex-price">{{ moex_price }}</span> рублей<br>
+                    <small>такова цена одной акции <mark>{% include "includes/bank_name.txt" %}</mark> на Мосбирже</small>
+                </p>
+                <br><br>
+                
+                <p>
+                    <span>NB:</span>
+                    Диапазон 1 - 1,2 капитала равен оценке акции 
+                    <b><span id="fair-price-range">{{ fair_price }} - {{ fair_price_20_percent }}</span> рублей</b><br>
+                    <small class="text-body-secondary">
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#rangeModal">Почему мы выбираем такой диапазон?</a>
+                    </small>
+                </p>
+            </div>
         </div>
-        <div class="col-1">
+        <div class="col-1"></div>
+    </div>
+</div>
 
+<!-- Explanation Modal -->
+<div class="modal fade" id="explanationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Почему 1 капитал?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Мультипликатор P/B (Price-to-Book) = 1 означает, что рыночная стоимость банка равна его балансовой стоимости (собственному капиталу).</p>
+                <p>Для банков это считается справедливой оценкой, поскольку:</p>
+                <ul>
+                    <li>Активы банков в основном финансовые и близки к рыночной стоимости</li>
+                    <li>P/B = 1 исторически является средним значением для банковского сектора</li>
+                    <li>При P/B < 1 акции считаются недооцененными</li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Range Modal -->
+<div class="modal fade" id="rangeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Диапазон 1-1.2 капитала</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Диапазон P/B от 1.0 до 1.2 считается зоной справедливой оценки для банков:</p>
+                <ul>
+                    <li><strong>P/B = 1.0</strong> - базовая справедливая стоимость</li>
+                    <li><strong>P/B = 1.2</strong> - премия за качество управления и перспективы роста</li>
+                    <li>Выше 1.2 - акции становятся дорогими</li>
+                    <li>Ниже 1.0 - потенциально недооцененные</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.price-score-дешево { color: #28a745; }
+.price-score-справедливо { color: #007bff; }
+.price-score-чуть-дорого { color: #fd7e14; }
+.price-score-дорого { color: #dc3545; }
+.price-score-неизвестно { color: #6c757d; }
+</style>
+
+<script>
+async function refreshData() {
+    const refreshIcon = document.getElementById('refresh-icon');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const priceContent = document.getElementById('price-content');
+    
+    // Show loading state
+    refreshIcon.textContent = '⏳';
+    loadingSpinner.style.display = 'block';
+    priceContent.style.opacity = '0.5';
+    
+    try {
+        const response = await fetch('{% url "price:api_current_data" %}');
+        const result = await response.json();
+        
+        if (result.success) {
+            const data = result.data;
+            
+            // Update DOM elements
+            document.getElementById('moex-price').textContent = data.moex_price || 'Н/Д';
+            document.getElementById('fair-price').textContent = data.fair_price || 'Н/Д';
+            document.getElementById('fair-price-range').textContent = 
+                `${data.fair_price || 'Н/Д'} - ${data.fair_price_20_percent || 'Н/Д'}`;
+            document.getElementById('price-score').textContent = data.price_score || 'неизвестно';
+            document.getElementById('pb-ratio').textContent = data.pb_ratio || 'Н/Д';
+            document.getElementById('last-update').textContent = 
+                new Date(data.timestamp).toLocaleString('ru-RU');
+            
+            // Update price score color
+            const scoreElement = document.getElementById('price-score');
+            scoreElement.className = `price-score-${data.price_score.replace(/\s+/g, '-')}`;
+            
+        } else {
+            throw new Error(result.error || 'Неизвестная ошибка');
+        }
+    } catch (error) {
+        console.error('Error refreshing data:', error);
+        alert('Ошибка при обновлении данных: ' + error.message);
+    } finally {
+        // Hide loading state
+        refreshIcon.textContent = '🔄';
+        loadingSpinner.style.display = 'none';
+        priceContent.style.opacity = '1';
+    }
+}
+
+// Auto-refresh every 5 minutes
+setInterval(refreshData, 5 * 60 * 1000);
+
+// Set initial last update time
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('last-update').textContent = new Date().toLocaleString('ru-RU');
+});
+</script>
 {% endblock %}

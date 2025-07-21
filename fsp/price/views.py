@@ -1,112 +1,204 @@
-import datetime as dt
-import requests
-from lxml import html
-from django.shortcuts import render
+import logging
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.contrib import messages
+from django.core.cache import cache
+from django.utils import timezone
 
-from price.logging import logger
+from .services import sber_service
+from .models import APICallLog
 
-
-STOCKS_QUANTITY = 22586948000
-
-
-cbr_headers = {
-        'User-Agent': ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0)'
-                       'Gecko/20100101 Firefox/45.0')
-    }
-moex_price_url = 'https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=marketdata&marketdata.columns=LAST'
-prev_price_url = 'https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=securities&securities.columns=PREVPRICE'
-market_price_url = 'https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=marketdata&marketdata.columns=MARKETPRICE'
-# use prev price, then market price url when moex price is off
-
-def get_used_month():
-    if dt.datetime.now().day > 15:
-        return dt.datetime.now().strftime('%m')
-    return (dt.datetime.now() - dt.timedelta(days=17)).strftime('%m')
-
-
-def get_cbr_url(usedmonth):
-    return (f'https://www.cbr.ru/banking_sector/credit/coinfo/f123/'
-            f'?regnum=1481&dt=2024-{usedmonth}-01')
-
-
-def parse_own_capital():
-    parsed_page = requests.get(get_cbr_url(get_used_month()),
-                               headers=cbr_headers)
-    tree = html.fromstring(parsed_page.content)
-    parsed_string = tree.xpath(
-        '/html/body/main/div/div/div/div[3]/div[2]/table/tr[2]/td[3]/text()'
-    )[0]
-    logger.info(f'parsed own capital, its {parsed_string}')
-    return int(parsed_string.replace(' ', '')) * 1000
-
-
-def get_fair_price():
-    own_capital = parse_own_capital()
-    fair_price = round(own_capital / STOCKS_QUANTITY, 2)
-    logger.info(f'got fair price, its {fair_price}')
-    return fair_price
-
-
-def get_moex_price():
-    moex_request = requests.get(moex_price_url).json()
-    moex_price = moex_request['marketdata']['data'][0][0]
-    if moex_price is None:
-        moex_request = requests.get(prev_price_url).json()
-        moex_price = moex_request['securities']['data'][0][0]
-        if moex_price is None:
-            moex_request = requests.get(market_price_url).json()
-            moex_price = moex_request['marketdata']['data'][0][0]
-    logger.info(f'got moex price, its {moex_price}')
-    return moex_price
-
-
-def get_price_score():
-    pb_value = round(get_moex_price() / get_fair_price(), 2)
-    logger.info(f'got P/B, its {pb_value}')
-    if pb_value < 1:
-        return 'дешево'
-    elif 1 <= pb_value <= 1.2:
-        return 'справедливо'
-    elif 1.2 < pb_value < 1.4:
-        return 'чуть дорого'
-    return 'дорого'
+logger = logging.getLogger('price')
 
 
 def index(request):
-    context = {
-        'moex_price': get_moex_price(),
-        'fair_price': get_fair_price(),
-        'fair_price_20_percent': round(get_fair_price() * 1.2, 2),
-        'price_score': get_price_score(),
-    }
-    logger.info('index works')
-    return render(request, 'index.html', context)
+    """Main page showing current price evaluation"""
+    try:
+        data = sber_service.get_current_data()
+        
+        # Check if we have valid data
+        if data['moex_price'] is None or data['fair_price'] is None:
+            messages.error(request, 'Не удалось получить актуальные данные. Попробуйте позже.')
+            data = {
+                'moex_price': 'Н/Д',
+                'fair_price': 'Н/Д',
+                'fair_price_20_percent': 'Н/Д',
+                'price_score': 'неизвестно'
+            }
+        
+        logger.info('Index page loaded successfully')
+        return render(request, 'index.html', data)
+        
+    except Exception as e:
+        logger.error(f'Error in index view: {e}')
+        messages.error(request, 'Произошла ошибка при загрузке данных.')
+        return render(request, 'index.html', {
+            'moex_price': 'Ошибка',
+            'fair_price': 'Ошибка',
+            'fair_price_20_percent': 'Ошибка',
+            'price_score': 'неизвестно'
+        })
 
 
 def thesis(request):
-    pb = round(get_moex_price() / get_fair_price(), 2)
-    context = {
-        'moex_price': get_moex_price(),
-        'pb': pb,
-    }
-    logger.info('thesis works')
-    return render(request, 'thesis.html', context)
+    """Investment thesis page"""
+    try:
+        data = sber_service.get_current_data()
+        context = {
+            'moex_price': data['moex_price'] or 'Н/Д',
+            'pb': data['pb_ratio'] or 'Н/Д',
+        }
+        
+        logger.info('Thesis page loaded successfully')
+        return render(request, 'thesis.html', context)
+        
+    except Exception as e:
+        logger.error(f'Error in thesis view: {e}')
+        messages.error(request, 'Произошла ошибка при загрузке данных.')
+        return render(request, 'thesis.html', {
+            'moex_price': 'Ошибка',
+            'pb': 'Ошибка'
+        })
 
 
 def history_data(request):
-    logger.info('hist data works')
-    return render(request, 'history_data.html')
+    """Historical data page"""
+    try:
+        # Get historical snapshots for the last 30 days
+        snapshots = sber_service.get_historical_data(days=30)
+        
+        context = {
+            'snapshots': snapshots,
+            'has_data': snapshots.exists()
+        }
+        
+        logger.info('History data page loaded successfully')
+        return render(request, 'history_data.html', context)
+        
+    except Exception as e:
+        logger.error(f'Error in history_data view: {e}')
+        messages.error(request, 'Произошла ошибка при загрузке исторических данных.')
+        return render(request, 'history_data.html', {'has_data': False})
 
 
-# TECH INFO - ONLY FOR OTLADKA TIME
+def api_current_data(request):
+    """API endpoint for current data (for AJAX calls)"""
+    try:
+        data = sber_service.get_current_data()
+        
+        # Handle timestamp conversion
+        timestamp = data.get('timestamp')
+        if hasattr(timestamp, 'isoformat'):
+            timestamp_str = timestamp.isoformat()
+        else:
+            timestamp_str = str(timestamp)
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'moex_price': data['moex_price'],
+                'fair_price': data['fair_price'],
+                'fair_price_20_percent': data['fair_price_20_percent'],
+                'pb_ratio': data['pb_ratio'],
+                'price_score': data['price_score'],
+                'timestamp': timestamp_str
+            }
+        })
+    except Exception as e:
+        logger.error(f'Error in API endpoint: {e}')
+        return JsonResponse({
+            'success': False,
+            'error': 'Не удалось получить данные'
+        }, status=500)
 
 
-def get_otladka_data():
-    return requests.get(moex_price_url).json()
+def health_check(request):
+    """Health check endpoint for monitoring"""
+    try:
+        from django.db import connection
+        from django.conf import settings
+        
+        checks = {}
+        overall_status = 'healthy'
+        
+        # Check database connection
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            checks['database'] = 'ok'
+        except Exception as e:
+            checks['database'] = f'error: {str(e)[:100]}'
+            overall_status = 'unhealthy'
+        
+        # Check cache
+        try:
+            test_key = 'health_check_test'
+            cache.set(test_key, 'ok', 10)
+            cache_working = cache.get(test_key) == 'ok'
+            cache.delete(test_key)
+            checks['cache'] = 'ok' if cache_working else 'error'
+            if not cache_working:
+                overall_status = 'degraded'
+        except Exception as e:
+            checks['cache'] = f'error: {str(e)[:100]}'
+            overall_status = 'degraded'
+        
+        # Get recent API call success rate
+        try:
+            recent_calls = APICallLog.objects.all()[:20]
+            if recent_calls.exists():
+                successful = recent_calls.filter(success=True).count()
+                success_rate = (successful / recent_calls.count()) * 100
+                checks['api_success_rate'] = f"{success_rate:.1f}%"
+                if success_rate < 50:
+                    overall_status = 'degraded'
+            else:
+                checks['api_success_rate'] = 'no_data'
+        except Exception as e:
+            checks['api_success_rate'] = f'error: {str(e)[:100]}'
+        
+        # Test external APIs
+        try:
+            test_data = sber_service.get_moex_price()
+            checks['moex_api'] = 'ok' if test_data is not None else 'error'
+        except Exception as e:
+            checks['moex_api'] = f'error: {str(e)[:100]}'
+            if overall_status == 'healthy':
+                overall_status = 'degraded'
+        
+        status = {
+            'status': overall_status,
+            'timestamp': timezone.now().isoformat(),
+            'checks': checks,
+            'version': '1.0.0'
+        }
+        
+        status_code = 200 if overall_status == 'healthy' else (503 if overall_status == 'unhealthy' else 200)
+        return JsonResponse(status, status=status_code)
+        
+    except Exception as e:
+        logger.error(f'Health check failed: {e}')
+        return JsonResponse({
+            'status': 'unhealthy',
+            'error': str(e)[:200],
+            'timestamp': timezone.now().isoformat()
+        }, status=500)
 
 
-def otladka(request):
-    context = {
-        'otladka': get_otladka_data()
-    }
-    return render(request, 'otladka.html', context)
+def save_snapshot(request):
+    """Manually save a price snapshot"""
+    if request.method == 'POST':
+        try:
+            snapshot = sber_service.save_snapshot()
+            if snapshot:
+                messages.success(request, f'Снимок данных сохранен: {snapshot.timestamp}')
+            else:
+                messages.error(request, 'Не удалось сохранить снимок данных')
+        except Exception as e:
+            logger.error(f'Error saving snapshot: {e}')
+            messages.error(request, 'Произошла ошибка при сохранении снимка')
+    
+    return redirect('price:index')
+
+
+

@@ -1,22 +1,93 @@
 <header>
-    <nav class="navbar navbar-light" style="background-color: lavender">
-    <div class="container">
-        <ul class="nav nav-pills">
-            {% with request.resolver_match.view_name as view_name %}
-            <li class="nav-item">
-                <a class="nav-link link-success {% if view_name == 'price:index' %} active bg-white {% endif %}" 
-                href="{% url 'price:index' %}">Оценка в моменте</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link link-success {% if view_name == 'price:thesis' %} active bg-white {% endif %}" 
-                href="{% url 'price:thesis' %}">Инвестиционный тезис</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link link-success {% if view_name == 'price:history_data' %} active bg-white {% endif %}" 
-                href="{% url 'price:history_data' %}">Исторические данные</a>
-            </li>
-            {% endwith %}
-        </ul>
-    </div>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'price:index' %}">
+                💰 Fair S**rbank Price
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% with request.resolver_match.view_name as view_name %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if view_name == 'price:index' %}active{% endif %}" 
+                           href="{% url 'price:index' %}">
+                            📊 Оценка в моменте
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if view_name == 'price:thesis' %}active{% endif %}" 
+                           href="{% url 'price:thesis' %}">
+                            📈 Инвестиционный тезис
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if view_name == 'price:history_data' %}active{% endif %}" 
+                           href="{% url 'price:history_data' %}">
+                            📋 Исторические данные
+                        </a>
+                    </li>
+                    {% endwith %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            ⚙️ Инструменты
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'price:api_current_data' %}" target="_blank">🔗 API данных</a></li>
+                            <li><a class="dropdown-item" href="{% url 'price:health_check' %}" target="_blank">🏥 Статус системы</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
+                            ℹ️ О проекте
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </nav>
 </header>
+
+<!-- About Modal -->
+<div class="modal fade" id="aboutModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">О проекте Fair S**rbank Price</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Fair S**rbank Price</strong> - это инструмент для оценки справедливой стоимости акций С**рбанка.</p>
+                
+                <h6>Как это работает:</h6>
+                <ul>
+                    <li>Получаем данные о собственном капитале с сайта ЦБ РФ</li>
+                    <li>Получаем текущую цену акций с Московской биржи</li>
+                    <li>Рассчитываем P/B коэффициент (Price-to-Book)</li>
+                    <li>Даем оценку: дешево, справедливо, дорого</li>
+                </ul>
+                
+                <h6>Возможности:</h6>
+                <ul>
+                    <li>📊 Актуальная оценка в реальном времени</li>
+                    <li>📈 Инвестиционный анализ</li>
+                    <li>📋 История изменений</li>
+                    <li>🤖 Telegram бот для уведомлений</li>
+                </ul>
+                
+                <div class="alert alert-warning mt-3">
+                    <small><strong>Дисклеймер:</strong> Данная информация не является инвестиционной рекомендацией. Всегда проводите собственный анализ перед принятием инвестиционных решений.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>

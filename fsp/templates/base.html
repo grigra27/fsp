@@ -3,19 +3,110 @@
 <!DOCTYPE html>
 <html lang="ru">
   <head>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Справедливая оценка акций банка на основе P/B коэффициента и собственного капитала банка">
+    <meta name="keywords" content="банк, акции, справедливая цена, P/B, инвестиции">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/bootstrap.css' %}">
-    <title>{% block title %} Fair Sber Price - оценка справеливой цены акций Сбербанка {% endblock %}</title>
+    
+    <!-- Custom CSS -->
+    <style>
+      .navbar-brand { font-weight: bold; }
+      .price-highlight { background: linear-gradient(45deg, #28a745, #20c997); color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; }
+      .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none; }
+      .loading-spinner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+      footer { margin-top: 3rem; padding: 2rem 0; background-color: #f8f9fa; }
+      .error-message { animation: fadeIn 0.5s; }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+    
+    <title>{% block title %}Fair S**r Price - справедливая оценка акций С**рбанка{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
   </head>
-  <body>
-    <!-- header повторяется на всех страницах -->
+  
+  <body class="d-flex flex-column min-vh-100">
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loading-spinner">
+        <div class="spinner-border text-light" role="status">
+          <span class="visually-hidden">Загрузка...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header -->
     {% include "includes/header.html" %}
-    <main>
-        <p>
-            {% block content %}Нет контента{% endblock %}
-        </p>
+    
+    <!-- Main content -->
+    <main class="flex-grow-1 py-4">
+      {% block content %}
+        <div class="container">
+          <div class="alert alert-info">
+            <h4>Нет контента</h4>
+            <p>Содержимое страницы не найдено.</p>
+          </div>
+        </div>
+      {% endblock %}
     </main>
-    <!-- footer повторяется на всех страницах -->
+    
+    <!-- Footer -->
     {% include "includes/footer.html" %}
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Global JavaScript -->
+    <script>
+      // Global loading functions
+      function showLoading() {
+        document.getElementById('loading-overlay').style.display = 'block';
+      }
+      
+      function hideLoading() {
+        document.getElementById('loading-overlay').style.display = 'none';
+      }
+      
+      // Auto-hide alerts after 5 seconds
+      document.addEventListener('DOMContentLoaded', function() {
+        const alerts = document.querySelectorAll('.alert-dismissible');
+        alerts.forEach(function(alert) {
+          setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }, 5000);
+        });
+      });
+      
+      // Add CSRF token to all AJAX requests
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+      
+      // Set up CSRF token for AJAX
+      const csrftoken = getCookie('csrftoken');
+      if (csrftoken) {
+        fetch.defaults = fetch.defaults || {};
+        fetch.defaults.headers = fetch.defaults.headers || {};
+        fetch.defaults.headers['X-CSRFToken'] = csrftoken;
+      }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
   </body>
 </html>

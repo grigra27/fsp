@@ -1,12 +1,25 @@
-asgiref==3.7.2
-beautifulsoup4==4.12.3
-certifi==2024.2.2
-charset-normalizer==3.3.2
+# Core Django
 Django==4.2.8
-idna==3.6
-lxml==5.1.0
-requests==2.31.0
-soupsieve==2.5
+asgiref==3.7.2
 sqlparse==0.4.4
 typing_extensions==4.9.0
+
+# Environment variables
+python-dotenv==1.1.1
+
+# Web scraping and HTTP requests
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+certifi==2024.2.2
+charset-normalizer==3.3.2
 urllib3==2.2.1
+soupsieve==2.5
+idna==3.6
+
+# Telegram bot
+python-telegram-bot==20.7
+
+# Production dependencies (install separately for production)
+# gunicorn==21.2.0
+# whitenoise==6.6.0

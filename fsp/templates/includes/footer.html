@@ -1,22 +1,62 @@
-<footer>
-    <!--hr-->
-    <div class="container text-start">
+<footer class="bg-light mt-auto">
+    <div class="container py-4">
         <div class="row">
-          <div class="col-1">
-            <!-- yandex metrics or liveinternet counter -->
-          </div>
-          <div class="col-9">
-            <p>
-                <small>Справедливая оценка акций {% include "includes/bank_name.txt" %} 
-                  в любое время в нашем <span class="badge bg-secondary">ТЕЛЕГРАМ</span> боте
+            <div class="col-md-6">
+                <h6 class="text-primary">📱 Telegram Бот</h6>
+                <p class="mb-2">
+                    <small>Получайте актуальные данные по акциям {% include "includes/bank_name.txt" %} 
+                    прямо в Telegram!</small>
+                </p>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-primary">@fairbankprice_bot</span>
+                    <small class="text-muted">Команды: /start, /info, /history</small>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <h6 class="text-primary">🔗 Полезные ссылки</h6>
+                <ul class="list-unstyled small">
+                    <li><a href="https://www.moex.com/" target="_blank" class="text-decoration-none">📈 Московская биржа</a></li>
+                    <li><a href="https://www.cbr.ru/" target="_blank" class="text-decoration-none">🏛️ Центральный банк РФ</a></li>
+                    <li><a href="https://www.sberbank.ru/ru/investor-relations" target="_blank" class="text-decoration-none">🏦 Инвестору С**рбанка</a></li>
+                </ul>
+            </div>
+            
+            <div class="col-md-3">
+                <h6 class="text-primary">ℹ️ Информация</h6>
+                <div class="mb-2">
+                    <span class="badge bg-warning text-dark">⚠️ DISCLAIMER</span>
+                </div>
+                <small class="text-muted">
+                    Данная информация носит исключительно информационный характер и не является 
+                    инвестиционной рекомендацией или советом по покупке/продаже ценных бумаг.
                 </small>
-            </p>
-          </div>
-          <div class="col-2">
-            <p>
-                <span class="badge rounded-pill text-bg-light">DISCLAIMER</span> pr
-            </p>
-          </div>
+            </div>
         </div>
-      </div>
+        
+        <hr class="my-3">
+        
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <small class="text-muted">
+                    © 2025 Grigorii Grachev. Проект с открытым исходным кодом.
+                </small>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <small class="text-muted">
+                    Последнее обновление: <span id="footer-timestamp">загрузка...</span>
+                </small>
+            </div>
+        </div>
+    </div>
 </footer>
+
+<script>
+// Update footer timestamp
+document.addEventListener('DOMContentLoaded', function() {
+    const timestampElement = document.getElementById('footer-timestamp');
+    if (timestampElement) {
+        timestampElement.textContent = new Date().toLocaleString('ru-RU');
+    }
+});
+</script>
