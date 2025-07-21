@@ -113,6 +113,7 @@ jobs:
         username: ${{ secrets.DO_USERNAME }}
         key: ${{ secrets.DO_SSH_KEY }}
         port: ${{ secrets.DO_PORT }}
+        passphrase: ${{ secrets.DO_SSH_PASSPHRASE }}
         script: |
           # Auto-setup server if needed
           echo "🚀 Starting auto-deployment..."
