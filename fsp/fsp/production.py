@@ -11,7 +11,12 @@ DEBUG = False
 try:
     import whitenoise
     MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    # Use CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
+    # to avoid issues with missing source map files
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+    # Additional WhiteNoise settings to handle missing files gracefully
+    WHITENOISE_SKIP_COMPRESS_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br', 'map']
+    WHITENOISE_USE_FINDERS = True
 except ImportError:
     pass
 

@@ -49,8 +49,8 @@ COPY fsp/ .
 # Create necessary directories
 RUN mkdir -p logs staticfiles
 
-# Collect static files (as root before switching user)
-RUN python manage.py collectstatic --noinput
+# Collect static files with production settings (as root before switching user)
+RUN DJANGO_SETTINGS_MODULE=fsp.production python manage.py collectstatic --noinput
 
 # Set permissions and switch to non-root user
 RUN chown -R django:django /app
