@@ -46,14 +46,17 @@ WORKDIR /app
 # Copy application code
 COPY fsp/ .
 
-# Create necessary directories
-RUN mkdir -p logs staticfiles
+# Create necessary directories with proper permissions
+RUN mkdir -p logs staticfiles && \
+    chown -R django:django /app
 
 # Collect static files with production settings (as root before switching user)
 RUN DJANGO_SETTINGS_MODULE=fsp.production python manage.py collectstatic --noinput
 
-# Set permissions and switch to non-root user
-RUN chown -R django:django /app
+# Ensure logs directory has correct permissions after collectstatic
+RUN chown -R django:django /app/logs /app/staticfiles
+
+# Switch to non-root user
 USER django
 
 # Expose port

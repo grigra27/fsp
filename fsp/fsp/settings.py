@@ -161,63 +161,115 @@ CACHES = {
 
 # Logging Configuration
 LOG_DIR = BASE_DIR / 'logs'
-LOG_DIR.mkdir(exist_ok=True)
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
+# Create logs directory with proper permissions
+try:
+    LOG_DIR.mkdir(exist_ok=True, mode=0o755)
+    # Test write permissions
+    test_file = LOG_DIR / 'test.log'
+    test_file.touch()
+    test_file.unlink()
+    LOGGING_AVAILABLE = True
+except (PermissionError, OSError):
+    LOGGING_AVAILABLE = False
+
+# Configure logging based on availability
+if LOGGING_AVAILABLE:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+                'style': '{',
+            },
+            'simple': {
+                'format': '{levelname} {asctime} {message}',
+                'style': '{',
+            },
         },
-        'simple': {
-            'format': '{levelname} {asctime} {message}',
-            'style': '{',
+        'handlers': {
+            'app_file': {
+                'level': 'INFO',
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': LOG_DIR / 'app.log',
+                'maxBytes': 1024*1024*5,  # 5MB
+                'backupCount': 5,
+                'formatter': 'verbose',
+            },
+            'error_file': {
+                'level': 'ERROR',
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': LOG_DIR / 'error.log',
+                'maxBytes': 1024*1024*5,  # 5MB
+                'backupCount': 5,
+                'formatter': 'verbose',
+            },
+            'console': {
+                'level': 'DEBUG' if DEBUG else 'INFO',
+                'class': 'logging.StreamHandler',
+                'formatter': 'simple',
+            },
         },
-    },
-    'handlers': {
-        'app_file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': LOG_DIR / 'app.log',
-            'maxBytes': 1024*1024*5,  # 5MB
-            'backupCount': 5,
-            'formatter': 'verbose',
+        'loggers': {
+            'price': {
+                'handlers': ['app_file', 'error_file', 'console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'telegrambot': {
+                'handlers': ['app_file', 'error_file', 'console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'django': {
+                'handlers': ['console', 'error_file'],
+                'level': 'WARNING',
+            },
+            'django.request': {
+                'handlers': ['error_file', 'console'],
+                'level': 'ERROR',
+                'propagate': False,
+            },
         },
-        'error_file': {
-            'level': 'ERROR',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': LOG_DIR / 'error.log',
-            'maxBytes': 1024*1024*5,  # 5MB
-            'backupCount': 5,
-            'formatter': 'verbose',
+    }
+else:
+    # Fallback to console-only logging if file logging is not available
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'simple': {
+                'format': '{levelname} {asctime} {message}',
+                'style': '{',
+            },
         },
-        'console': {
-            'level': 'DEBUG' if DEBUG else 'WARNING',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+        'handlers': {
+            'console': {
+                'level': 'DEBUG' if DEBUG else 'INFO',
+                'class': 'logging.StreamHandler',
+                'formatter': 'simple',
+            },
         },
-    },
-    'loggers': {
-        'price': {
-            'handlers': ['app_file', 'error_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
+        'loggers': {
+            'price': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'telegrambot': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'django': {
+                'handlers': ['console'],
+                'level': 'WARNING',
+            },
+            'django.request': {
+                'handlers': ['console'],
+                'level': 'ERROR',
+                'propagate': False,
+            },
         },
-        'telegrambot': {
-            'handlers': ['app_file', 'error_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'django': {
-            'handlers': ['console', 'error_file'],
-            'level': 'WARNING',
-        },
-        'django.request': {
-            'handlers': ['error_file'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-    },
-}
+    }

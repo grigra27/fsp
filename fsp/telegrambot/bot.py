@@ -148,27 +148,38 @@ def run_bot():
     """Run the Telegram bot"""
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
+        logger.error("TELEGRAM_BOT_TOKEN environment variable is not set!")
         raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is not set!")
     
-    # Create application
-    app = ApplicationBuilder().token(token).build()
+    logger.info(f"Initializing bot with token: {token[:10]}...")
     
-    # Add command handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("info", info))
-    app.add_handler(CommandHandler("history", history))
-    app.add_handler(CommandHandler("help", help_command))
-    
-    # Handle unknown commands
-    app.add_handler(MessageHandler(filters.COMMAND, handle_unknown))
-    
-    # Add error handler
-    app.add_error_handler(error_handler)
-    
-    logger.info("Starting Telegram bot...")
-    
-    # Run the bot
-    app.run_polling(
-        allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True
-    )
+    try:
+        # Create application
+        app = ApplicationBuilder().token(token).build()
+        
+        # Add command handlers
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("info", info))
+        app.add_handler(CommandHandler("history", history))
+        app.add_handler(CommandHandler("help", help_command))
+        
+        # Handle unknown commands
+        app.add_handler(MessageHandler(filters.COMMAND, handle_unknown))
+        
+        # Add error handler
+        app.add_error_handler(error_handler)
+        
+        logger.info("✅ Telegram bot handlers configured successfully")
+        logger.info("🚀 Starting Telegram bot polling...")
+        
+        # Run the bot
+        app.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+            poll_interval=1.0,
+            timeout=10
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to start bot: {e}")
+        raise

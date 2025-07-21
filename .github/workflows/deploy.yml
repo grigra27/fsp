@@ -129,9 +129,18 @@ jobs:
           mkdir -p /opt/fair-sber-price
           cd /opt/fair-sber-price
           
-          # Create logs directory
-          mkdir -p fsp/logs
-          chmod 755 fsp/logs
+          # Create logs directory with proper permissions
+          mkdir -p fsp/logs fsp/staticfiles
+          chmod 755 fsp/logs fsp/staticfiles
+          
+          # Create database file if it doesn't exist
+          if [ ! -f "fsp/db.sqlite3" ]; then
+            touch fsp/db.sqlite3
+          fi
+          chmod 664 fsp/db.sqlite3
+          
+          # Set proper ownership (UID 1000 matches django user in container)
+          chown -R 1000:1000 fsp/ || true
           
           # Create environment file
           cat > .env << EOF
@@ -142,7 +151,7 @@ jobs:
           REDIS_URL=redis://redis:6379/0
           EOF
           
-          # Create docker-compose.prod.yml
+          # Copy updated docker-compose.prod.yml from repository
           cat > docker-compose.prod.yml << 'COMPOSE_EOF'
           version: '3.8'
           
@@ -210,6 +219,12 @@ jobs:
                 - ./fsp/db.sqlite3:/app/db.sqlite3
               networks:
                 - fsp_network
+              healthcheck:
+                test: ["CMD", "python", "-c", "import os; exit(0 if os.getenv('TELEGRAM_BOT_TOKEN') else 1)"]
+                interval: 60s
+                timeout: 10s
+                retries: 3
+                start_period: 30s
           
           volumes:
             redis_data:

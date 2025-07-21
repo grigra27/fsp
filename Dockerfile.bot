@@ -23,12 +23,17 @@ RUN pip install --no-cache-dir -r requirements-prod.txt
 # Copy application code
 COPY fsp/ .
 
-# Create necessary directories and set permissions
+# Create necessary directories with proper permissions
 RUN mkdir -p logs && \
-    chown -R django:django /app
+    chown -R django:django /app && \
+    chmod 755 /app/logs
 
 # Switch to non-root user
 USER django
 
-# Run the Telegram bot
-CMD ["python", "manage.py", "runtelegrambot"]
+# Health check for bot
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import os; exit(0 if os.getenv('TELEGRAM_BOT_TOKEN') else 1)"
+
+# Run the Telegram bot with proper error handling
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py runtelegrambot"]
