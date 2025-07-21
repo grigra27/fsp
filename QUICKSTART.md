@@ -40,24 +40,24 @@ curl http://localhost/api/health/
 
 ## ☁️ Деплой на DigitalOcean
 
-### Автоматический деплой (рекомендуется)
+### 🚀 Полностью автоматический деплой (рекомендуется)
+
+**Никаких скриптов запускать не нужно! GitHub Actions всё сделает сам!**
 
 1. **Fork репозитория** на GitHub
-2. **Создайте DigitalOcean droplet** (Ubuntu 22.04, минимум 1GB RAM, Docker обычно уже установлен)
+2. **Создайте DigitalOcean droplet** (Ubuntu 22.04, минимум 1GB RAM)
 3. **Настройте GitHub Secrets**:
    ```
    DO_HOST=your-server-ip
    DO_USERNAME=root
    DO_SSH_KEY=your-private-ssh-key
-   SECRET_KEY=your-secure-secret-key
-   ALLOWED_HOSTS=your-domain.com,your-server-ip
+   SECRET_KEY=your-secure-secret-key-50-chars
+   ALLOWED_HOSTS=fsp.hopto.org,your-server-ip
    TELEGRAM_BOT_TOKEN=your-bot-token
    ```
-4. **Запустите setup на сервере**:
-   ```bash
-   curl -sSL https://raw.githubusercontent.com/grigra27/fair_sber_price/main/scripts/setup-server.sh | bash
-   ```
-5. **Push в main ветку** → автоматический деплой!
+4. **Push в main ветку** → автоматический деплой! ✨
+
+**Всё! Сервер настроится автоматически!**
 
 ### Результат:
 - 🌐 Веб-сайт: `http://fsp.hopto.org`

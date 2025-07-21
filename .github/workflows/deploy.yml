@@ -106,7 +106,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Deploy to DigitalOcean
+    - name: Auto-setup and Deploy to DigitalOcean
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.DO_HOST }}
@@ -114,37 +114,178 @@ jobs:
         key: ${{ secrets.DO_SSH_KEY }}
         port: ${{ secrets.DO_PORT }}
         script: |
+          # Auto-setup server if needed
+          echo "🚀 Starting auto-deployment..."
+          
+          # Install Docker Compose if not present
+          if ! command -v docker-compose &> /dev/null; then
+            echo "📦 Installing Docker Compose..."
+            curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
+          fi
+          
+          # Create application directory
+          mkdir -p /opt/fair-sber-price
           cd /opt/fair-sber-price
           
-          # Pull latest code
-          git pull origin main
+          # Create logs directory
+          mkdir -p fsp/logs
+          chmod 755 fsp/logs
           
-          # Update environment variables
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" > .env
-          echo "DEBUG=False" >> .env
-          echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> .env
-          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
-          echo "REDIS_URL=redis://redis:6379/0" >> .env
+          # Create environment file
+          cat > .env << EOF
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DEBUG=False
+          ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
+          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+          REDIS_URL=redis://redis:6379/0
+          EOF
+          
+          # Create docker-compose.prod.yml
+          cat > docker-compose.prod.yml << 'COMPOSE_EOF'
+          version: '3.8'
+          
+          services:
+            redis:
+              image: redis:7-alpine
+              container_name: fsp_redis
+              restart: unless-stopped
+              volumes:
+                - redis_data:/data
+              networks:
+                - fsp_network
+              healthcheck:
+                test: ["CMD", "redis-cli", "ping"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+          
+            web:
+              image: ghcr.io/grigra27/fair_sber_price-web:latest
+              container_name: fsp_web
+              restart: unless-stopped
+              ports:
+                - "8000:8000"
+              environment:
+                - SECRET_KEY=${SECRET_KEY}
+                - DEBUG=False
+                - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+                - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+                - REDIS_URL=redis://redis:6379/0
+                - DJANGO_SETTINGS_MODULE=fsp.production
+              depends_on:
+                redis:
+                  condition: service_healthy
+              volumes:
+                - ./fsp/logs:/app/logs
+                - ./fsp/db.sqlite3:/app/db.sqlite3
+                - static_files:/app/staticfiles
+              networks:
+                - fsp_network
+              healthcheck:
+                test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/health/', timeout=5)"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 40s
+          
+            telegram-bot:
+              image: ghcr.io/grigra27/fair_sber_price-bot:latest
+              container_name: fsp_telegram_bot
+              restart: unless-stopped
+              environment:
+                - SECRET_KEY=${SECRET_KEY}
+                - DEBUG=False
+                - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+                - REDIS_URL=redis://redis:6379/0
+                - DJANGO_SETTINGS_MODULE=fsp.production
+              depends_on:
+                web:
+                  condition: service_healthy
+                redis:
+                  condition: service_healthy
+              volumes:
+                - ./fsp/logs:/app/logs
+                - ./fsp/db.sqlite3:/app/db.sqlite3
+              networks:
+                - fsp_network
+          
+          volumes:
+            redis_data:
+            static_files:
+          
+          networks:
+            fsp_network:
+              driver: bridge
+          COMPOSE_EOF
+          
+          # Setup firewall if ufw is available
+          if command -v ufw &> /dev/null; then
+            ufw allow 22/tcp 2>/dev/null || true
+            ufw allow 8000/tcp 2>/dev/null || true
+            ufw --force enable 2>/dev/null || true
+          fi
+          
+          # Create systemd service for auto-restart
+          cat > /etc/systemd/system/fair-sber-price.service << 'SERVICE_EOF'
+          [Unit]
+          Description=Fair Sber Price Application
+          Requires=docker.service
+          After=docker.service
+          
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          WorkingDirectory=/opt/fair-sber-price
+          ExecStart=/usr/local/bin/docker-compose -f docker-compose.prod.yml up -d
+          ExecStop=/usr/local/bin/docker-compose -f docker-compose.prod.yml down
+          TimeoutStartSec=0
+          
+          [Install]
+          WantedBy=multi-user.target
+          SERVICE_EOF
+          
+          systemctl daemon-reload
+          systemctl enable fair-sber-price.service
           
           # Login to GitHub Container Registry
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
           # Pull latest images
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:latest
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BOT }}:latest
+          echo "📥 Pulling latest Docker images..."
+          docker pull ghcr.io/grigra27/fair_sber_price-web:latest
+          docker pull ghcr.io/grigra27/fair_sber_price-bot:latest
           
-          # Stop and remove old containers
-          docker-compose -f docker-compose.prod.yml down
+          # Stop old containers
+          echo "🛑 Stopping old containers..."
+          docker-compose -f docker-compose.prod.yml down || true
           
           # Start new containers
+          echo "🚀 Starting new containers..."
           docker-compose -f docker-compose.prod.yml up -d
           
           # Clean up old images
           docker image prune -f
           
+          # Wait for services to start
+          echo "⏳ Waiting for services to start..."
+          sleep 45
+          
           # Check deployment status
-          sleep 30
+          echo "📊 Checking deployment status..."
           docker-compose -f docker-compose.prod.yml ps
           
           # Test health endpoint
-          curl -f http://localhost/api/health/ || exit 1
+          echo "🏥 Testing health endpoint..."
+          for i in {1..10}; do
+            if curl -f http://localhost:8000/api/health/ 2>/dev/null; then
+              echo "✅ Health check passed!"
+              break
+            else
+              echo "⏳ Attempt $i/10 failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          echo "🎉 Deployment completed!"
+          echo "🌐 Your application should be available at: http://${{ secrets.DO_HOST }}:8000"

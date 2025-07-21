@@ -23,16 +23,13 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Database optimization for production
 DATABASES['default'].update({
     'CONN_MAX_AGE': 60,
-    'OPTIONS': {
-        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-    }
 })
 
 # Cache configuration for production (Redis recommended)
 if os.getenv('REDIS_URL'):
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'BACKEND': 'django_redis.cache.RedisCache',
             'LOCATION': os.getenv('REDIS_URL'),
             'TIMEOUT': CACHE_TIMEOUT,
             'OPTIONS': {

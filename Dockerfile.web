@@ -46,15 +46,15 @@ WORKDIR /app
 # Copy application code
 COPY fsp/ .
 
-# Create necessary directories and set permissions
-RUN mkdir -p logs staticfiles && \
-    chown -R django:django /app
+# Create necessary directories
+RUN mkdir -p logs staticfiles
 
-# Switch to non-root user
-USER django
-
-# Collect static files
+# Collect static files (as root before switching user)
 RUN python manage.py collectstatic --noinput
+
+# Set permissions and switch to non-root user
+RUN chown -R django:django /app
+USER django
 
 # Expose port
 EXPOSE 8000

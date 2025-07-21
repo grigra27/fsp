@@ -15,20 +15,19 @@ docker-compose up -d
 curl http://localhost:8000/api/health/
 ```
 
-### Ручная установка
+### Ручная установка (для разработки)
 ```bash
 # 1. Установите зависимости
 cd fsp
 pip install -r requirements.txt
-pip install -r requirements-prod.txt  # Продакшн зависимости
 
 # 2. Настройте переменные окружения
 cp ../.env.example ../.env
 # Отредактируйте .env файл
 
-# 3. Запустите продакшн-скрипт
-chmod +x scripts/start_production.sh
-./scripts/start_production.sh
+# 3. Запустите сервер
+python manage.py migrate
+python manage.py runserver
 ```
 
 ## 🔧 Конфигурация
@@ -99,11 +98,11 @@ WORKERS=3
 
 ### Горизонтальное масштабирование
 ```bash
-# Увеличьте количество workers
-WORKERS=5 ./scripts/start_production.sh
+# Увеличьте количество workers в docker-compose.prod.yml
+# Измените команду gunicorn: --workers 5
 
-# Или в docker-compose
-docker-compose up --scale web=3
+# Или масштабируйте контейнеры
+docker-compose -f docker-compose.prod.yml up -d --scale web=3
 ```
 
 ### Мониторинг ресурсов
