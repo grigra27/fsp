@@ -50,6 +50,7 @@ services:
   telegram-bot:
     image: ghcr.io/grigra27/fair_sber_price-bot:latest
     container_name: fsp_telegram_bot
+    user: "1000:1000"
     restart: unless-stopped
     environment:
       - SECRET_KEY=${SECRET_KEY}
