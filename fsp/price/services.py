@@ -72,9 +72,11 @@ class SberPriceService:
     
     def get_used_month(self) -> str:
         """Get the month to use for CBR data based on current date"""
-        if dt.datetime.now().day > 25:
-            return dt.datetime.now().strftime('%m')
-        return (dt.datetime.now() - dt.timedelta(days=27)).strftime('%m')
+        # Используем московское время из Django timezone
+        now = timezone.localtime(timezone.now())
+        if now.day > 25:
+            return now.strftime('%m')
+        return (now - dt.timedelta(days=27)).strftime('%m')
     
     def get_cbr_url(self, used_month: str) -> str:
         """Generate CBR URL for the given month"""
@@ -173,7 +175,8 @@ class SberPriceService:
     
     def _is_trading_hours(self) -> bool:
         """Check if current time is during trading hours (rough approximation)"""
-        now = dt.datetime.now()
+        # Используем московское время из Django timezone
+        now = timezone.localtime(timezone.now())
         # Moscow Exchange trading hours: roughly 10:00-18:45 Moscow time, Mon-Fri
         return (now.weekday() < 5 and 
                 10 <= now.hour < 19)
