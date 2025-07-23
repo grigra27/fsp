@@ -46,6 +46,7 @@ show_help() {
     echo ""
     echo "Диагностика и исправление:"
     echo "  health      - Проверка здоровья приложения"
+    echo "  diagnose    - Быстрая диагностика всех проблем"
     echo "  fix         - Исправление частых проблем"
     echo "  fix-bot     - Исправление проблем с Telegram ботом"
     echo "  fix-perms   - Исправление прав доступа"
@@ -62,7 +63,7 @@ show_help() {
     echo "Примеры:"
     echo "  $0 deploy   # Полный деплой"
     echo "  $0 logs web # Логи веб-приложения"
-    echo "  $0 debug-bot # Диагностика Telegram бота"
+    echo "  $0 diagnose # Быстрая диагностика проблем"
 }
 
 # Деплой приложения
@@ -365,6 +366,64 @@ fix_permissions() {
     success "Исправление прав доступа завершено!"
 }
 
+# Быстрая диагностика всех проблем
+diagnose() {
+    info "🔍 Быстрая диагностика Fair Sber Price..."
+    
+    # Проверка статуса контейнеров
+    info "1. Статус контейнеров:"
+    docker-compose -f docker-compose.prod.yml ps
+    
+    # Проверка логов веб-приложения
+    info "2. Последние логи веб-приложения:"
+    docker logs fsp_web --tail=20 2>/dev/null || error "Веб-контейнер не найден"
+    
+    # Проверка логов PostgreSQL
+    info "3. Последние логи PostgreSQL:"
+    docker logs fsp_postgres --tail=10 2>/dev/null || error "PostgreSQL контейнер не найден"
+    
+    # Проверка подключения к базе данных
+    info "4. Проверка подключения к PostgreSQL:"
+    docker exec fsp_postgres pg_isready -U fsp_user -d fsp_db 2>/dev/null && success "PostgreSQL доступен" || error "PostgreSQL недоступен"
+    
+    # Проверка health endpoint
+    info "5. Проверка health endpoint:"
+    if curl -f http://localhost:8000/api/health/ >/dev/null 2>&1; then
+        success "Health endpoint работает"
+        curl -s http://localhost:8000/api/health/ | python3 -m json.tool 2>/dev/null || echo "JSON ответ недоступен"
+    else
+        error "Health endpoint недоступен"
+    fi
+    
+    # Проверка переменных окружения
+    info "6. Проверка переменных окружения веб-контейнера:"
+    docker exec fsp_web env | grep -E "(DATABASE_URL|POSTGRES_|DJANGO_SETTINGS_MODULE|DEBUG)" | sed 's/PASSWORD=.*/PASSWORD=***/' 2>/dev/null || error "Не удалось получить переменные окружения"
+    
+    # Проверка миграций Django
+    info "7. Проверка миграций Django:"
+    docker exec fsp_web python manage.py showmigrations 2>/dev/null || error "Не удалось проверить миграции"
+    
+    # Проверка Django check
+    info "8. Django system check:"
+    docker exec fsp_web python manage.py check 2>/dev/null || error "Django check failed"
+    
+    # Проверка Redis
+    info "9. Проверка Redis:"
+    docker exec fsp_redis redis-cli ping 2>/dev/null && success "Redis работает" || error "Redis недоступен"
+    
+    # Проверка портов
+    info "10. Проверка портов:"
+    netstat -tlnp | grep :8000 && success "Порт 8000 слушается" || error "Порт 8000 не слушается"
+    
+    success "Диагностика завершена!"
+    
+    info "Рекомендации:"
+    echo "- Если веб-контейнер не запускается, проверьте логи: docker logs fsp_web"
+    echo "- Если PostgreSQL недоступен, проверьте переменные окружения"
+    echo "- Если health endpoint не работает, возможно проблема с Django"
+    echo "- Для исправления проблем запустите: $0 fix"
+}
+
 # Диагностика 404 ошибки
 debug_404() {
     info "🔍 Диагностика 404 ошибки на главной странице..."
@@ -648,6 +707,7 @@ main() {
         status)     status ;;
         logs)       logs "$2" ;;
         health)     health ;;
+        diagnose)   diagnose ;;
         fix)        fix ;;
         fix-bot)    fix_bot ;;
         fix-perms)  fix_permissions ;;

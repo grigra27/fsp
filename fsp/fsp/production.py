@@ -75,14 +75,11 @@ SESSION_COOKIE_AGE = 86400  # 24 hours
 CONN_MAX_AGE = 60
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 
-# Database optimizations
+# Database optimizations for PostgreSQL
 if os.getenv('DATABASE_URL'):
     DATABASES['default'].update({
         'OPTIONS': {
-            'MAX_CONNS': 20,
-            'OPTIONS': {
-                'MAX_CONNS': 20,
-            }
+            'connect_timeout': 10,
         }
     })
 
