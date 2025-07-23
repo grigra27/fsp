@@ -221,12 +221,21 @@ cp .env.example .env
 ./scripts/fsp_manager.sh fix
 ```
 
-#### 2. База данных недоступна
-**Причина**: Неправильные права доступа к SQLite
+#### 2. Проблемы с базой данных
+**Причина**: Неправильная конфигурация PostgreSQL или проблемы с подключением
 **Решение**: 
 ```bash
-chmod 666 fsp/db.sqlite3
-chown 1000:1000 fsp/db.sqlite3
+# Проверка статуса PostgreSQL
+docker-compose -f docker-compose.prod.yml ps postgres
+docker logs fsp_postgres
+
+# Проверка подключения к базе данных
+docker exec -it fsp_postgres psql -U fsp_user -d fsp_db -c "SELECT 1;"
+
+# Если нужно пересоздать базу данных
+docker-compose -f docker-compose.prod.yml down
+docker volume rm fair_sber_price_postgres_data
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
 #### 3. Telegram бот не работает
@@ -423,6 +432,9 @@ DEBUG=False
 ALLOWED_HOSTS=your-domain.com,your-server-ip
 TELEGRAM_BOT_TOKEN=your-bot-token
 REDIS_URL=redis://redis:6379/0
+POSTGRES_DB=fsp_db
+POSTGRES_USER=fsp_user
+POSTGRES_PASSWORD=your-secure-password
 ```
 
 ## 🔧 Конфигурация

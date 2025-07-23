@@ -25,10 +25,25 @@ USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Database optimization for production
-DATABASES['default'].update({
-    'CONN_MAX_AGE': 60,
-})
+# Database configuration for production
+if os.getenv('DATABASE_URL'):
+    # Use PostgreSQL in production
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'fsp_db'),
+            'USER': os.getenv('POSTGRES_USER', 'fsp_user'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+            'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
+            'CONN_MAX_AGE': 60,
+        }
+    }
+else:
+    # Fallback to SQLite with connection pooling
+    DATABASES['default'].update({
+        'CONN_MAX_AGE': 60,
+    })
 
 # Cache configuration for production (Redis recommended)
 if os.getenv('REDIS_URL'):
