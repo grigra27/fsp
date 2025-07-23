@@ -4,6 +4,8 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.core.cache import cache
 from django.utils import timezone
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 
 from .services import sber_service
 from .models import APICallLog
@@ -11,6 +13,7 @@ from .models import APICallLog
 logger = logging.getLogger('price')
 
 
+@cache_page(30)  # Cache for 30 seconds
 def index(request):
     """Main page showing current price evaluation"""
     try:
@@ -40,6 +43,7 @@ def index(request):
         })
 
 
+@cache_page(60)  # Cache for 1 minute
 def thesis(request):
     """Investment thesis page"""
     try:
@@ -61,6 +65,7 @@ def thesis(request):
         })
 
 
+@cache_page(300)  # Cache for 5 minutes (historical data changes rarely)
 def history_data(request):
     """Historical data page"""
     try:
@@ -81,6 +86,7 @@ def history_data(request):
         return render(request, 'history_data.html', {'has_data': False})
 
 
+@cache_page(15)  # Cache API for 15 seconds
 def api_current_data(request):
     """API endpoint for current data (for AJAX calls)"""
     try:
@@ -93,7 +99,7 @@ def api_current_data(request):
         else:
             timestamp_str = str(timestamp)
         
-        return JsonResponse({
+        response = JsonResponse({
             'success': True,
             'data': {
                 'moex_price': data['moex_price'],
@@ -104,6 +110,11 @@ def api_current_data(request):
                 'timestamp': timestamp_str
             }
         })
+        
+        # Add cache headers for better performance
+        response['Cache-Control'] = 'public, max-age=15'
+        return response
+        
     except Exception as e:
         logger.error(f'Error in API endpoint: {e}')
         return JsonResponse({

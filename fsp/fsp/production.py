@@ -54,6 +54,12 @@ if os.getenv('REDIS_URL'):
             'TIMEOUT': CACHE_TIMEOUT,
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'CONNECTION_POOL_KWARGS': {
+                    'max_connections': 50,
+                    'retry_on_timeout': True,
+                },
+                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+                'IGNORE_EXCEPTIONS': True,
             }
         }
     }
@@ -68,6 +74,30 @@ SESSION_COOKIE_AGE = 86400  # 24 hours
 # Performance optimizations
 CONN_MAX_AGE = 60
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+
+# Database optimizations
+if os.getenv('DATABASE_URL'):
+    DATABASES['default'].update({
+        'OPTIONS': {
+            'MAX_CONNS': 20,
+            'OPTIONS': {
+                'MAX_CONNS': 20,
+            }
+        }
+    })
+
+# Template caching
+TEMPLATES[0]['OPTIONS']['loaders'] = [
+    ('django.template.loaders.cached.Loader', [
+        'django.template.loaders.filesystem.Loader',
+        'django.template.loaders.app_directories.Loader',
+    ]),
+]
+
+# Additional performance settings
+USE_ETAGS = True
+USE_L10N = False  # Disable localization for better performance
+USE_I18N = False  # Disable internationalization for better performance
 
 # Additional security headers
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'

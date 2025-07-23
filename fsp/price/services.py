@@ -33,7 +33,7 @@ class SberPriceService:
             'market': 'https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=marketdata&marketdata.columns=MARKETPRICE'
         }
     
-    def _make_api_call(self, url: str, api_name: str, timeout: int = 10) -> Optional[requests.Response]:
+    def _make_api_call(self, url: str, api_name: str, timeout: int = 5) -> Optional[requests.Response]:
         """Make API call with logging and error handling"""
         start_time = time.time()
         
@@ -219,13 +219,37 @@ class SberPriceService:
         return 'дорого'
     
     def get_current_data(self) -> Dict[str, Any]:
-        """Get all current price data"""
+        """Get all current price data with optimized caching"""
+        # Check if we have cached complete data
+        cache_key = 'current_data_complete'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data is not None:
+            logger.info('Using cached complete current data')
+            return cached_data
+        
+        # Get data once and calculate everything from it
         moex_price = self.get_moex_price()
         fair_price = self.get_fair_price()
-        pb_ratio = self.get_pb_ratio()
-        price_score = self.get_price_score()
         
-        return {
+        # Calculate P/B ratio directly without additional method calls
+        pb_ratio = None
+        if moex_price is not None and fair_price is not None:
+            pb_ratio = round(moex_price / fair_price, 2)
+        
+        # Calculate price score directly
+        price_score = 'неизвестно'
+        if pb_ratio is not None:
+            if pb_ratio < 1:
+                price_score = 'дешево'
+            elif 1 <= pb_ratio <= 1.2:
+                price_score = 'справедливо'
+            elif 1.2 < pb_ratio < 1.4:
+                price_score = 'чуть дорого'
+            else:
+                price_score = 'дорого'
+        
+        data = {
             'moex_price': moex_price,
             'fair_price': fair_price,
             'fair_price_20_percent': round(fair_price * 1.2, 2) if fair_price else None,
@@ -233,6 +257,12 @@ class SberPriceService:
             'price_score': price_score,
             'timestamp': timezone.now()
         }
+        
+        # Cache complete data for 30 seconds to avoid repeated calculations
+        cache.set(cache_key, data, 30)
+        logger.info('Cached complete current data')
+        
+        return data
     
     def save_snapshot(self) -> Optional[PriceSnapshot]:
         """Save current data as a snapshot"""
