@@ -132,6 +132,7 @@ jobs:
           # Create logs directory with proper permissions
           mkdir -p fsp/logs fsp/staticfiles
           chmod 755 fsp/logs fsp/staticfiles
+          chown -R 1000:1000 fsp/logs fsp/staticfiles || true
           
           # Create database file if it doesn't exist
           if [ ! -f "fsp/db.sqlite3" ]; then

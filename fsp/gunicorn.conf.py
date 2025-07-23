@@ -20,9 +20,9 @@ max_requests_jitter = 50
 # Preload app for better performance
 preload_app = True
 
-# Logging
-accesslog = "/app/logs/gunicorn_access.log"
-errorlog = "/app/logs/gunicorn_error.log"
+# Logging - use stdout/stderr instead of files to avoid permission issues
+accesslog = "-"  # stdout
+errorlog = "-"   # stderr
 loglevel = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 

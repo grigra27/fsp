@@ -51,6 +51,7 @@ COPY fsp/ .
 RUN mkdir -p logs staticfiles && \
     touch /app/db.sqlite3 && \
     chmod 664 /app/db.sqlite3 && \
+    chmod 755 logs && \
     chown -R django:django /app
 
 # Collect static files with production settings (as root before switching user)
