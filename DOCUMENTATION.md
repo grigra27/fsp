@@ -446,9 +446,9 @@ POSTGRES_PASSWORD=your-secure-password
 - **nginx**: Reverse proxy (порт 80/443)
 
 ### Доступ к приложению
-- **Веб-интерфейс**: http://your-domain.com/
-- **API**: http://your-domain.com/api/
-- **Health check**: http://your-domain.com/api/health/
+- **Веб-интерфейс**: https://fsp.hopto.org/
+- **API**: https://fsp.hopto.org/api/
+- **Health check**: https://fsp.hopto.org/api/health/
 - **Telegram бот**: https://t.me/fairbankprice_bot
 
 ### Временная зона

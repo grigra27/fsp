@@ -368,4 +368,4 @@ jobs:
           done
           
           echo "🎉 Deployment completed!"
-          echo "🌐 Your application should be available at: http://${{ secrets.DO_HOST }}:8000"
+          echo "🌐 Your application should be available at: https://onbr.site"
