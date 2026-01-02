@@ -282,7 +282,7 @@ jobs:
               volumes:
                 - ./nginx.conf:/etc/nginx/nginx.conf:ro
                 - static_files:/var/www/static:ro
-                - ./ssl_copy:/etc/nginx/ssl:ro
+                - ./ssl_copy:/etc/letsencrypt:ro
               depends_on:
                 web:
                   condition: service_healthy
@@ -368,4 +368,4 @@ jobs:
           done
           
           echo "🎉 Deployment completed!"
-          echo "🌐 Your application should be available at: https://onbr.site"
+          echo "🌐 Your application should be available at: https://fsp.onbr.site"
