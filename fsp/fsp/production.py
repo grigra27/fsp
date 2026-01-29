@@ -22,6 +22,9 @@ USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# Allow all hosts when behind proxy (nginx validates the host)
+ALLOWED_HOSTS = ['*']
+
 # Use SQLite with optimizations
 DATABASES['default'].update({
     'CONN_MAX_AGE': 60,
