@@ -263,7 +263,7 @@ jobs:
           
           # Stop old containers
           echo "🛑 Stopping old containers..."
-          docker-compose -f docker-compose.prod.yml down || true
+          docker-compose -f docker-compose.prod.yml down --remove-orphans || true
           
           # Start new containers
           echo "🚀 Starting new containers..."
@@ -283,11 +283,16 @@ jobs:
           # Test web service
           echo "🏥 Testing web service..."
           for i in {1..10}; do
-            if curl -f http://localhost:8000/ 2>/dev/null; then
+            if curl -f http://localhost:8000/api/health/ 2>/dev/null; then
               echo "✅ Web service is up!"
               break
             else
               echo "⏳ Attempt $i/10 failed, retrying in 5 seconds..."
+              if [ $i -eq 10 ]; then
+                echo "❌ Web service failed to start. Showing logs:"
+                docker-compose -f docker-compose.prod.yml logs --tail=50 web
+                docker-compose -f docker-compose.prod.yml logs --tail=50 telegram-bot
+              fi
               sleep 5
             fi
           done
