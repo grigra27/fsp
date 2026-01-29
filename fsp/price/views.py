@@ -1,14 +1,12 @@
 import logging
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.http import JsonResponse
 from django.contrib import messages
 from django.core.cache import cache
 from django.utils import timezone
 from django.views.decorators.cache import cache_page
-from django.views.decorators.vary import vary_on_headers
 
 from .services import sber_service
-from .models import APICallLog
 
 logger = logging.getLogger('price')
 
@@ -65,27 +63,6 @@ def thesis(request):
         })
 
 
-@cache_page(300)  # Cache for 5 minutes (historical data changes rarely)
-def history_data(request):
-    """Historical data page"""
-    try:
-        # Get historical snapshots for the last 30 days
-        snapshots = sber_service.get_historical_data(days=30)
-        
-        context = {
-            'snapshots': snapshots,
-            'has_data': snapshots.exists()
-        }
-        
-        logger.info('History data page loaded successfully')
-        return render(request, 'history_data.html', context)
-        
-    except Exception as e:
-        logger.error(f'Error in history_data view: {e}')
-        messages.error(request, 'Произошла ошибка при загрузке исторических данных.')
-        return render(request, 'history_data.html', {'has_data': False})
-
-
 @cache_page(15)  # Cache API for 15 seconds
 def api_current_data(request):
     """API endpoint for current data (for AJAX calls)"""
@@ -124,10 +101,9 @@ def api_current_data(request):
 
 
 def health_check(request):
-    """Health check endpoint for monitoring"""
+    """Health check endpoint for monitoring (simplified)"""
     try:
         from django.db import connection
-        from django.conf import settings
         
         checks = {}
         overall_status = 'healthy'
@@ -154,20 +130,6 @@ def health_check(request):
             checks['cache'] = f'error: {str(e)[:100]}'
             overall_status = 'degraded'
         
-        # Get recent API call success rate
-        try:
-            recent_calls = APICallLog.objects.all()[:20]
-            if recent_calls.exists():
-                successful = recent_calls.filter(success=True).count()
-                success_rate = (successful / recent_calls.count()) * 100
-                checks['api_success_rate'] = f"{success_rate:.1f}%"
-                if success_rate < 50:
-                    overall_status = 'degraded'
-            else:
-                checks['api_success_rate'] = 'no_data'
-        except Exception as e:
-            checks['api_success_rate'] = f'error: {str(e)[:100]}'
-        
         # Test external APIs
         try:
             test_data = sber_service.get_moex_price()
@@ -181,7 +143,7 @@ def health_check(request):
             'status': overall_status,
             'timestamp': timezone.now().isoformat(),
             'checks': checks,
-            'version': '1.0.0'
+            'version': '2.0.0-simplified'
         }
         
         status_code = 200 if overall_status == 'healthy' else (503 if overall_status == 'unhealthy' else 200)
@@ -194,22 +156,3 @@ def health_check(request):
             'error': str(e)[:200],
             'timestamp': timezone.now().isoformat()
         }, status=500)
-
-
-def save_snapshot(request):
-    """Manually save a price snapshot"""
-    if request.method == 'POST':
-        try:
-            snapshot = sber_service.save_snapshot()
-            if snapshot:
-                messages.success(request, f'Снимок данных сохранен: {snapshot.timestamp}')
-            else:
-                messages.error(request, 'Не удалось сохранить снимок данных')
-        except Exception as e:
-            logger.error(f'Error saving snapshot: {e}')
-            messages.error(request, 'Произошла ошибка при сохранении снимка')
-    
-    return redirect('price:index')
-
-
-
