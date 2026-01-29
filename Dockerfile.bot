@@ -23,12 +23,10 @@ RUN pip install --no-cache-dir -r requirements-prod.txt
 # Copy application code
 COPY fsp/ .
 
-# Create necessary directories and database file with proper permissions
-RUN mkdir -p logs && \
-    touch /app/db.sqlite3 && \
-    chmod 664 /app/db.sqlite3 && \
+# Create necessary directories with proper permissions
+RUN mkdir -p logs db && \
     chown -R django:django /app && \
-    chmod 755 /app/logs
+    chmod 755 /app/logs /app/db
 
 # Switch to non-root user
 USER django
