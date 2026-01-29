@@ -46,8 +46,8 @@ if not DEBUG:
 SBER_STOCKS_QUANTITY = int(os.getenv('SBER_STOCKS_QUANTITY', '22586948000'))
 CBR_BASE_URL = os.getenv('CBR_BASE_URL', 'https://www.cbr.ru/banking_sector/credit/coinfo/f123/')
 
-# Cache Configuration
-CACHE_TIMEOUT = int(os.getenv('CACHE_TIMEOUT', '300'))  # 5 minutes default
+# Cache Configuration - simple in-memory cache
+CACHE_TIMEOUT = int(os.getenv('CACHE_TIMEOUT', '60'))  # 1 minute default
 
 
 # Application definition
@@ -65,7 +65,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'price.middleware.PerformanceMonitoringMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -154,130 +153,46 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Cache Configuration
+# Cache Configuration - simple in-memory
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+        'LOCATION': 'fsp-cache',
         'TIMEOUT': CACHE_TIMEOUT,
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-            'CULL_FREQUENCY': 3,
-        }
     }
 }
 
-# Logging Configuration
-LOG_DIR = BASE_DIR / 'logs'
-
-# Create logs directory with proper permissions
-try:
-    LOG_DIR.mkdir(exist_ok=True, mode=0o755)
-    # Test write permissions
-    test_file = LOG_DIR / 'test.log'
-    test_file.touch()
-    test_file.unlink()
-    LOGGING_AVAILABLE = True
-except (PermissionError, OSError):
-    LOGGING_AVAILABLE = False
-
-# Configure logging based on availability
-if LOGGING_AVAILABLE:
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'verbose': {
-                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-                'style': '{',
-            },
-            'simple': {
-                'format': '{levelname} {asctime} {message}',
-                'style': '{',
-            },
+# Logging Configuration - console only
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
         },
-        'handlers': {
-            'app_file': {
-                'level': 'INFO',
-                'class': 'logging.handlers.RotatingFileHandler',
-                'filename': LOG_DIR / 'app.log',
-                'maxBytes': 1024*1024*5,  # 5MB
-                'backupCount': 5,
-                'formatter': 'verbose',
-            },
-            'error_file': {
-                'level': 'ERROR',
-                'class': 'logging.handlers.RotatingFileHandler',
-                'filename': LOG_DIR / 'error.log',
-                'maxBytes': 1024*1024*5,  # 5MB
-                'backupCount': 5,
-                'formatter': 'verbose',
-            },
-            'console': {
-                'level': 'DEBUG' if DEBUG else 'INFO',
-                'class': 'logging.StreamHandler',
-                'formatter': 'simple',
-            },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
-        'loggers': {
-            'price': {
-                'handlers': ['app_file', 'error_file', 'console'],
-                'level': 'INFO',
-                'propagate': False,
-            },
-            'telegrambot': {
-                'handlers': ['app_file', 'error_file', 'console'],
-                'level': 'INFO',
-                'propagate': False,
-            },
-            'django': {
-                'handlers': ['console', 'error_file'],
-                'level': 'WARNING',
-            },
-            'django.request': {
-                'handlers': ['error_file', 'console'],
-                'level': 'ERROR',
-                'propagate': False,
-            },
+    },
+    'loggers': {
+        'price': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
         },
-    }
-else:
-    # Fallback to console-only logging if file logging is not available
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'simple': {
-                'format': '{levelname} {asctime} {message}',
-                'style': '{',
-            },
+        'telegrambot': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
         },
-        'handlers': {
-            'console': {
-                'level': 'DEBUG' if DEBUG else 'INFO',
-                'class': 'logging.StreamHandler',
-                'formatter': 'simple',
-            },
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
         },
-        'loggers': {
-            'price': {
-                'handlers': ['console'],
-                'level': 'INFO',
-                'propagate': False,
-            },
-            'telegrambot': {
-                'handlers': ['console'],
-                'level': 'INFO',
-                'propagate': False,
-            },
-            'django': {
-                'handlers': ['console'],
-                'level': 'WARNING',
-            },
-            'django.request': {
-                'handlers': ['console'],
-                'level': 'ERROR',
-                'propagate': False,
-            },
-        },
-    }
+    },
+}

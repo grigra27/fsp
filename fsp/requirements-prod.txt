@@ -6,10 +6,3 @@ gunicorn==21.2.0
 
 # Static files handling
 whitenoise==6.6.0
-
-# Redis cache (optional)
-redis==4.6.0
-django-redis==5.4.0
-
-# PostgreSQL database
-psycopg2-binary==2.9.9

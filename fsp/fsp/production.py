@@ -1,5 +1,5 @@
 """
-Production settings for Fair Sber Price
+Production settings for Fair Sber Price - Simplified version
 """
 import os
 from .settings import *
@@ -11,10 +11,7 @@ DEBUG = False
 try:
     import whitenoise
     MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-    # Use CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
-    # to avoid issues with missing source map files
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
-    # Additional WhiteNoise settings to handle missing files gracefully
     WHITENOISE_SKIP_COMPRESS_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br', 'map']
     WHITENOISE_USE_FINDERS = True
 except ImportError:
@@ -25,66 +22,16 @@ USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Database configuration for production
-if os.getenv('DATABASE_URL'):
-    # Use PostgreSQL in production
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('POSTGRES_DB', 'fsp_db'),
-            'USER': os.getenv('POSTGRES_USER', 'fsp_user'),
-            'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-            'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
-            'PORT': os.getenv('POSTGRES_PORT', '5432'),
-            'CONN_MAX_AGE': 60,
-        }
-    }
-else:
-    # Fallback to SQLite with connection pooling
-    DATABASES['default'].update({
-        'CONN_MAX_AGE': 60,
-    })
-
-# Cache configuration for production (Redis recommended)
-if os.getenv('REDIS_URL'):
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': os.getenv('REDIS_URL'),
-            'TIMEOUT': CACHE_TIMEOUT,
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-                'CONNECTION_POOL_KWARGS': {
-                    'max_connections': 50,
-                    'retry_on_timeout': True,
-                },
-                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
-                'IGNORE_EXCEPTIONS': True,
-            }
-        }
-    }
+# Use SQLite with optimizations
+DATABASES['default'].update({
+    'CONN_MAX_AGE': 60,
+})
 
 # Session configuration
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
-SESSION_CACHE_ALIAS = 'default'
-SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
-# No email configuration - using file logging only
-
-# Performance optimizations
-CONN_MAX_AGE = 60
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
-
-# Database optimizations for PostgreSQL
-if os.getenv('DATABASE_URL'):
-    DATABASES['default'].update({
-        'OPTIONS': {
-            'connect_timeout': 10,
-        }
-    })
-
-# Template caching - override template configuration
-TEMPLATES[0]['APP_DIRS'] = False  # Must be False when using custom loaders
+# Template caching
+TEMPLATES[0]['APP_DIRS'] = False
 TEMPLATES[0]['OPTIONS']['loaders'] = [
     ('django.template.loaders.cached.Loader', [
         'django.template.loaders.filesystem.Loader',
@@ -92,13 +39,9 @@ TEMPLATES[0]['OPTIONS']['loaders'] = [
     ]),
 ]
 
-# Additional performance settings
+# Performance settings
 USE_ETAGS = True
-USE_L10N = False  # Disable localization for better performance
-USE_I18N = False  # Disable internationalization for better performance
 
-# Additional security headers
+# Security headers
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
-
-# Logging for production - file-based only

@@ -2,15 +2,12 @@ import datetime as dt
 import time
 import requests
 from lxml import html
-from decimal import Decimal
 from typing import Optional, Dict, Any
 
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 import logging
-
-from .models import PriceSnapshot, APICallLog
 
 logger = logging.getLogger('price')
 
@@ -34,45 +31,24 @@ class SberPriceService:
         }
     
     def _make_api_call(self, url: str, api_name: str, timeout: int = 5) -> Optional[requests.Response]:
-        """Make API call with logging and error handling"""
+        """Make API call with error handling"""
         start_time = time.time()
         
         try:
             response = requests.get(url, headers=self.headers, timeout=timeout)
             response.raise_for_status()
             
-            # Log successful calls
             response_time = int((time.time() - start_time) * 1000)
-            APICallLog.objects.create(
-                api_name=api_name,
-                url=url,
-                status_code=response.status_code,
-                response_time_ms=response_time,
-                success=True
-            )
-            
             logger.info(f"API call to {api_name} successful: {response.status_code} ({response_time}ms)")
             return response
             
         except requests.exceptions.RequestException as e:
             response_time = int((time.time() - start_time) * 1000)
-            status_code = getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None
-            
-            APICallLog.objects.create(
-                api_name=api_name,
-                url=url,
-                status_code=status_code,
-                response_time_ms=response_time,
-                success=False,
-                error_message=str(e)[:500]  # Limit error message length
-            )
-            
             logger.error(f"API call to {api_name} failed: {e}")
             return None
     
     def get_used_month(self) -> str:
         """Get the month to use for CBR data based on current date"""
-        # Используем московское время из Django timezone
         now = timezone.localtime(timezone.now())
         if now.day > 25:
             return now.strftime('%m')
@@ -104,7 +80,7 @@ class SberPriceService:
             xpath_expressions = [
                 '/html/body/main/div/div/div/div[3]/div[2]/table/tr[2]/td[3]/text()',
                 '//table//tr[2]/td[3]/text()',
-                '//td[contains(@class, "capital")]/text()',  # If they add CSS classes
+                '//td[contains(@class, "capital")]/text()',
             ]
             
             parsed_string = None
@@ -174,12 +150,9 @@ class SberPriceService:
         return None
     
     def _is_trading_hours(self) -> bool:
-        """Check if current time is during trading hours (rough approximation)"""
-        # Используем московское время из Django timezone
+        """Check if current time is during trading hours"""
         now = timezone.localtime(timezone.now())
-        # Moscow Exchange trading hours: roughly 10:00-18:45 Moscow time, Mon-Fri
-        return (now.weekday() < 5 and 
-                10 <= now.hour < 19)
+        return (now.weekday() < 5 and 10 <= now.hour < 19)
     
     def get_fair_price(self) -> Optional[float]:
         """Calculate fair price based on own capital"""
@@ -219,8 +192,7 @@ class SberPriceService:
         return 'дорого'
     
     def get_current_data(self) -> Dict[str, Any]:
-        """Get all current price data with optimized caching"""
-        # Check if we have cached complete data
+        """Get all current price data with caching"""
         cache_key = 'current_data_complete'
         cached_data = cache.get(cache_key)
         
@@ -228,16 +200,13 @@ class SberPriceService:
             logger.info('Using cached complete current data')
             return cached_data
         
-        # Get data once and calculate everything from it
         moex_price = self.get_moex_price()
         fair_price = self.get_fair_price()
         
-        # Calculate P/B ratio directly without additional method calls
         pb_ratio = None
         if moex_price is not None and fair_price is not None:
             pb_ratio = round(moex_price / fair_price, 2)
         
-        # Calculate price score directly
         price_score = 'неизвестно'
         if pb_ratio is not None:
             if pb_ratio < 1:
@@ -258,37 +227,11 @@ class SberPriceService:
             'timestamp': timezone.now()
         }
         
-        # Cache complete data for 30 seconds to avoid repeated calculations
+        # Cache for 30 seconds
         cache.set(cache_key, data, 30)
         logger.info('Cached complete current data')
         
         return data
-    
-    def save_snapshot(self) -> Optional[PriceSnapshot]:
-        """Save current data as a snapshot"""
-        try:
-            data = self.get_current_data()
-            own_capital = self.parse_own_capital()
-            
-            snapshot = PriceSnapshot.objects.create(
-                moex_price=Decimal(str(data['moex_price'])) if data['moex_price'] else None,
-                fair_price=Decimal(str(data['fair_price'])) if data['fair_price'] else None,
-                pb_ratio=Decimal(str(data['pb_ratio'])) if data['pb_ratio'] else None,
-                own_capital=own_capital,
-                price_score=data['price_score']
-            )
-            
-            logger.info(f'Saved price snapshot: {snapshot.id}')
-            return snapshot
-            
-        except Exception as e:
-            logger.error(f'Failed to save snapshot: {e}')
-            return None
-    
-    def get_historical_data(self, days: int = 30) -> list:
-        """Get historical snapshots for the last N days"""
-        cutoff_date = timezone.now() - dt.timedelta(days=days)
-        return PriceSnapshot.objects.filter(timestamp__gte=cutoff_date)
 
 
 # Global service instance

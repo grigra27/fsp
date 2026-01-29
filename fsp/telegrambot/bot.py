@@ -14,7 +14,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🏦 Добро пожаловать в бот справедливой оценки акций Сбербанка!\n\n"
         "Доступные команды:\n"
         "/info - получить текущие данные\n"
-        "/history - краткая история цен\n"
         "/help - показать эту справку"
     )
     await update.message.reply_text(welcome_msg)
@@ -26,44 +25,11 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_current_info(update, context)
 
 
-async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /history command"""
-    try:
-        # Use sync_to_async to call Django ORM methods
-        get_historical_data = sync_to_async(sber_service.get_historical_data)
-        snapshots = await get_historical_data(days=7)
-        
-        # Convert QuerySet to list to avoid async issues
-        snapshots_list = await sync_to_async(list)(snapshots)
-        
-        if not snapshots_list:
-            await update.message.reply_text("📊 Исторические данные пока недоступны")
-            return
-        
-        msg = "📈 История за последние 7 дней:\n\n"
-        for snapshot in snapshots_list[:5]:  # Show last 5 entries
-            date_str = snapshot.timestamp.strftime('%d.%m %H:%M')
-            msg += (
-                f"📅 {date_str}\n"
-                f"💰 MOEX: {snapshot.moex_price or 'Н/Д'} ₽\n"
-                f"⚖️ Справедливая: {snapshot.fair_price or 'Н/Д'} ₽\n"
-                f"📊 P/B: {snapshot.pb_ratio or 'Н/Д'}\n"
-                f"🎯 Оценка: {snapshot.price_score}\n\n"
-            )
-        
-        await update.message.reply_text(msg)
-        
-    except Exception as e:
-        logger.error(f"Error in history command: {e}")
-        await update.message.reply_text("❌ Ошибка при получении исторических данных")
-
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command"""
     help_msg = (
         "🤖 Справка по боту:\n\n"
         "📊 /info - текущие данные по акции\n"
-        "📈 /history - история за последние дни\n"
         "❓ /help - эта справка\n\n"
         "🔄 Данные обновляются автоматически с кешированием\n"
         "⏰ Кеш: 1 минута в торговые часы, 5 минут в остальное время\n\n"
@@ -160,7 +126,6 @@ def run_bot():
         # Add command handlers
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("info", info))
-        app.add_handler(CommandHandler("history", history))
         app.add_handler(CommandHandler("help", help_command))
         
         # Handle unknown commands

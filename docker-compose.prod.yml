@@ -1,40 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL database
-  postgres:
-    image: postgres:15-alpine
-    container_name: fsp_postgres
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB:-fsp_db}
-      - POSTGRES_USER=${POSTGRES_USER:-fsp_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fsp_password}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - fsp_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fsp_user} -d ${POSTGRES_DB:-fsp_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis cache service
-  redis:
-    image: redis:7-alpine
-    container_name: fsp_redis
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
-    networks:
-      - fsp_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # Django web application
   web:
     image: ghcr.io/grigra27/fair_sber_price-web:latest
@@ -47,26 +13,14 @@ services:
       - DEBUG=False
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - REDIS_URL=redis://redis:6379/0
-      - DJANGO_SETTINGS_MODULE=fsp.production
-      - DATABASE_URL=postgres
-      - POSTGRES_DB=${POSTGRES_DB:-fsp_db}
-      - POSTGRES_USER=${POSTGRES_USER:-fsp_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fsp_password}
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - ./fsp/logs:/app/logs
+      - ./fsp/db:/app/db
       - static_files:/app/staticfiles
     networks:
       - fsp_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -83,21 +37,9 @@ services:
       - DEBUG=False
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - REDIS_URL=redis://redis:6379/0
-      - DJANGO_SETTINGS_MODULE=fsp.production
-      - DATABASE_URL=postgres
-      - POSTGRES_DB=${POSTGRES_DB:-fsp_db}
-      - POSTGRES_USER=${POSTGRES_USER:-fsp_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fsp_password}
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - ./fsp/logs:/app/logs
+      - ./fsp/db:/app/db
     networks:
       - fsp_network
     healthcheck:
@@ -120,14 +62,11 @@ services:
       - static_files:/var/www/static:ro
       - ./ssl_copy:/etc/letsencrypt:ro
     depends_on:
-      web:
-        condition: service_healthy
+      - web
     networks:
       - fsp_network
 
 volumes:
-  postgres_data:
-  redis_data:
   static_files:
 
 networks:

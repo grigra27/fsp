@@ -116,7 +116,7 @@ jobs:
         passphrase: ${{ secrets.DO_SSH_PASSPHRASE }}
         script: |
           # Auto-setup server if needed
-          echo "🚀 Starting auto-deployment..."
+          echo "🚀 Starting auto-deployment (simplified version)..."
           
           # Install Docker Compose if not present
           if ! command -v docker-compose &> /dev/null; then
@@ -129,74 +129,27 @@ jobs:
           mkdir -p /opt/fair-sber-price
           cd /opt/fair-sber-price
           
-          # Create logs directory with proper permissions
-          mkdir -p fsp/logs fsp/staticfiles
-          chmod 755 fsp/logs fsp/staticfiles
-          chown -R 1000:1000 fsp/logs fsp/staticfiles || true
-          
-          # Create database file if it doesn't exist
-          if [ ! -f "fsp/db.sqlite3" ]; then
-            touch fsp/db.sqlite3
-          fi
-          chmod 664 fsp/db.sqlite3
-          
-          # Set proper ownership (UID 1000 matches django user in container)
+          # Create necessary directories with proper permissions
+          mkdir -p fsp/logs fsp/staticfiles fsp/db
+          chmod 755 fsp/logs fsp/staticfiles fsp/db
           chown -R 1000:1000 fsp/ || true
           
-          # Create environment file
+          # Create environment file (simplified - no PostgreSQL/Redis)
           cat > .env << EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           DEBUG=False
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
           TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
-          REDIS_URL=redis://redis:6379/0
-          POSTGRES_DB=${{ secrets.POSTGRES_DB || 'fsp_db' }}
-          POSTGRES_USER=${{ secrets.POSTGRES_USER || 'fsp_user' }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD || 'fsp_password' }}
-          POSTGRES_HOST=postgres
-          POSTGRES_PORT=5432
-          DATABASE_URL=postgres
           EOF
           
-          # Copy updated docker-compose.prod.yml from repository
+          # Copy nginx config from repository
+          curl -s https://raw.githubusercontent.com/grigra27/fsp/main/nginx.conf -o nginx.conf
+          
+          # Copy updated docker-compose.prod.yml (simplified version)
           cat > docker-compose.prod.yml << 'COMPOSE_EOF'
           version: '3.8'
           
           services:
-            # PostgreSQL database
-            postgres:
-              image: postgres:15-alpine
-              container_name: fsp_postgres
-              restart: unless-stopped
-              environment:
-                - POSTGRES_DB=${POSTGRES_DB:-fsp_db}
-                - POSTGRES_USER=${POSTGRES_USER:-fsp_user}
-                - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fsp_password}
-              volumes:
-                - postgres_data:/var/lib/postgresql/data
-              networks:
-                - fsp_network
-              healthcheck:
-                test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fsp_user} -d ${POSTGRES_DB:-fsp_db}"]
-                interval: 10s
-                timeout: 5s
-                retries: 5
-          
-            # Redis cache service
-            redis:
-              image: redis:7-alpine
-              container_name: fsp_redis
-              restart: unless-stopped
-              volumes:
-                - redis_data:/data
-              networks:
-                - fsp_network
-              healthcheck:
-                test: ["CMD", "redis-cli", "ping"]
-                interval: 30s
-                timeout: 10s
-                retries: 3
-          
             # Django web application
             web:
               image: ghcr.io/grigra27/fair_sber_price-web:latest
@@ -209,26 +162,14 @@ jobs:
                 - DEBUG=False
                 - ALLOWED_HOSTS=${ALLOWED_HOSTS}
                 - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-                - REDIS_URL=redis://redis:6379/0
-                - DJANGO_SETTINGS_MODULE=fsp.production
-                - DATABASE_URL=postgres
-                - POSTGRES_DB=${POSTGRES_DB:-fsp_db}
-                - POSTGRES_USER=${POSTGRES_USER:-fsp_user}
-                - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fsp_password}
-                - POSTGRES_HOST=postgres
-                - POSTGRES_PORT=5432
-              depends_on:
-                postgres:
-                  condition: service_healthy
-                redis:
-                  condition: service_healthy
               volumes:
                 - ./fsp/logs:/app/logs
+                - ./fsp/db:/app/db
                 - static_files:/app/staticfiles
               networks:
                 - fsp_network
               healthcheck:
-                test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+                test: ["CMD", "curl", "-f", "http://localhost:8000/"]
                 interval: 30s
                 timeout: 10s
                 retries: 3
@@ -245,23 +186,9 @@ jobs:
                 - DEBUG=False
                 - ALLOWED_HOSTS=${ALLOWED_HOSTS}
                 - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-                - REDIS_URL=redis://redis:6379/0
-                - DJANGO_SETTINGS_MODULE=fsp.production
-                - DATABASE_URL=postgres
-                - POSTGRES_DB=${POSTGRES_DB:-fsp_db}
-                - POSTGRES_USER=${POSTGRES_USER:-fsp_user}
-                - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fsp_password}
-                - POSTGRES_HOST=postgres
-                - POSTGRES_PORT=5432
-              depends_on:
-                postgres:
-                  condition: service_healthy
-                web:
-                  condition: service_healthy
-                redis:
-                  condition: service_healthy
               volumes:
                 - ./fsp/logs:/app/logs
+                - ./fsp/db:/app/db
               networks:
                 - fsp_network
               healthcheck:
@@ -284,14 +211,11 @@ jobs:
                 - static_files:/var/www/static:ro
                 - ./ssl_copy:/etc/letsencrypt:ro
               depends_on:
-                web:
-                  condition: service_healthy
+                - web
               networks:
                 - fsp_network
           
           volumes:
-            postgres_data:
-            redis_data:
             static_files:
           
           networks:
@@ -302,14 +226,15 @@ jobs:
           # Setup firewall if ufw is available
           if command -v ufw &> /dev/null; then
             ufw allow 22/tcp 2>/dev/null || true
-            ufw allow 8000/tcp 2>/dev/null || true
+            ufw allow 80/tcp 2>/dev/null || true
+            ufw allow 443/tcp 2>/dev/null || true
             ufw --force enable 2>/dev/null || true
           fi
           
           # Create systemd service for auto-restart
           cat > /etc/systemd/system/fair-sber-price.service << 'SERVICE_EOF'
           [Unit]
-          Description=Fair Sber Price Application
+          Description=Fair Sber Price Application (Simplified)
           Requires=docker.service
           After=docker.service
           
@@ -349,23 +274,24 @@ jobs:
           
           # Wait for services to start
           echo "⏳ Waiting for services to start..."
-          sleep 45
+          sleep 30
           
           # Check deployment status
           echo "📊 Checking deployment status..."
           docker-compose -f docker-compose.prod.yml ps
           
-          # Test health endpoint
-          echo "🏥 Testing health endpoint..."
+          # Test web service
+          echo "🏥 Testing web service..."
           for i in {1..10}; do
-            if curl -f http://localhost:8000/api/health/ 2>/dev/null; then
-              echo "✅ Health check passed!"
+            if curl -f http://localhost:8000/ 2>/dev/null; then
+              echo "✅ Web service is up!"
               break
             else
-              echo "⏳ Attempt $i/10 failed, retrying in 10 seconds..."
-              sleep 10
+              echo "⏳ Attempt $i/10 failed, retrying in 5 seconds..."
+              sleep 5
             fi
           done
           
           echo "🎉 Deployment completed!"
           echo "🌐 Your application should be available at: https://fsp.onbr.site"
+          echo "💾 Resource usage: ~150-250 MB RAM (simplified version)"
