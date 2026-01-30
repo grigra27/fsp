@@ -21,10 +21,6 @@
                     <button class="btn btn-sm btn-outline-primary" onclick="refreshData()">
                         <span id="refresh-icon">🔄</span> Обновить
                     </button>
-                    <form method="post" action="{% url 'price:save_snapshot' %}" class="d-inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-outline-success">💾 Сохранить снимок</button>
-                    </form>
                 </div>
             </div>
             <br>
