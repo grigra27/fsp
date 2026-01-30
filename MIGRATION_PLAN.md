@@ -4,7 +4,7 @@
 - **Текущий хостинг**: Digital Ocean
 - **Новый хостинг**: Timeweb
 - **Текущий домен**: fsp.onbr.site
-- **Новый домен**: fsp.insflow.online
+- **Новый домен**: fsp.tw1.ru
 
 ---
 
@@ -48,8 +48,8 @@ sudo ufw --force enable
 
 ## 🌐 Этап 2: Настройка нового домена
 
-### 2.1 Регистрация/настройка домена fsp.insflow.online
-- Если домен insflow.online уже зарегистрирован - создать поддомен fsp
+### 2.1 Регистрация/настройка домена fsp.tw1.ru
+- Если домен tw1.ru уже зарегистрирован - создать поддомен fsp
 - Если нет - зарегистрировать домен
 
 ### 2.2 Настройка DNS записей
@@ -61,12 +61,12 @@ A      fsp        IP_TIMEWEB_SERVER     300
 
 ### 2.3 Ожидание распространения DNS
 - Подождать 1-24 часа для распространения DNS
-- Проверить через `dig fsp.insflow.online` или dnschecker.org
+- Проверить через `dig fsp.tw1.ru` или dnschecker.org
 
 ```bash
 # Проверка DNS
-dig fsp.insflow.online A
-ping fsp.insflow.online
+dig fsp.tw1.ru A
+ping fsp.tw1.ru
 ```
 
 ---
@@ -80,7 +80,7 @@ ping fsp.insflow.online
 #### 1. `.env` файл
 Обновить:
 ```env
-ALLOWED_HOSTS=fsp.insflow.online
+ALLOWED_HOSTS=fsp.tw1.ru
 ```
 
 #### 2. `nginx.conf`
@@ -92,9 +92,9 @@ ssl_certificate /etc/letsencrypt/live/fsp.onbr.site/fullchain.pem;
 ssl_certificate_key /etc/letsencrypt/live/fsp.onbr.site/privkey.pem;
 
 # Стало:
-server_name fsp.insflow.online;
-ssl_certificate /etc/letsencrypt/live/fsp.insflow.online/fullchain.pem;
-ssl_certificate_key /etc/letsencrypt/live/fsp.insflow.online/privkey.pem;
+server_name fsp.tw1.ru;
+ssl_certificate /etc/letsencrypt/live/fsp.tw1.ru/fullchain.pem;
+ssl_certificate_key /etc/letsencrypt/live/fsp.tw1.ru/privkey.pem;
 ```
 
 #### 3. `DOMAIN_SETUP.md`
@@ -111,7 +111,7 @@ DO_USERNAME → TW_USERNAME
 DO_SSH_KEY → TW_SSH_KEY
 DO_SSH_PASSPHRASE → TW_SSH_PASSPHRASE
 DO_PORT → TW_PORT
-ALLOWED_HOSTS=fsp.insflow.online
+ALLOWED_HOSTS=fsp.tw1.ru
 ```
 
 ### 3.2 Создать новую ветку для миграции (опционально)
@@ -148,7 +148,7 @@ nano .env  # Отредактировать с новыми настройкам
 ```env
 SECRET_KEY=your-new-secret-key-here
 DEBUG=False
-ALLOWED_HOSTS=fsp.insflow.online
+ALLOWED_HOSTS=fsp.tw1.ru
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 SBER_STOCKS_QUANTITY=22586948000
 CBR_BASE_URL=https://www.cbr.ru/banking_sector/credit/coinfo/f123/
@@ -177,7 +177,7 @@ docker logs fsp_telegram_bot
 docker logs fsp_nginx
 
 # Проверить доступность (через HTTP)
-curl http://fsp.insflow.online/api/health/
+curl http://fsp.tw1.ru/api/health/
 curl http://TIMEWEB_IP:8000/api/health/
 ```
 
@@ -200,7 +200,7 @@ docker run -it --rm \
   -v "$(pwd)/ssl_copy:/etc/letsencrypt" \
   -p 80:80 \
   certbot/certbot certonly --standalone \
-  -d fsp.insflow.online \
+  -d fsp.tw1.ru \
   --email your-email@example.com \
   --agree-tos --non-interactive
 ```
@@ -210,10 +210,10 @@ docker run -it --rm \
 ```nginx
 server {
     listen 443 ssl;
-    server_name fsp.insflow.online;
+    server_name fsp.tw1.ru;
 
-    ssl_certificate /etc/letsencrypt/live/fsp.insflow.online/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/fsp.insflow.online/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/fsp.tw1.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/fsp.tw1.ru/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     
@@ -228,8 +228,8 @@ docker-compose -f docker-compose.prod.yml up -d nginx
 
 ### 5.5 Проверить HTTPS
 ```bash
-curl https://fsp.insflow.online/api/health/
-curl -I https://fsp.insflow.online/
+curl https://fsp.tw1.ru/api/health/
+curl -I https://fsp.tw1.ru/
 ```
 
 ---
@@ -298,7 +298,7 @@ docker exec fsp_telegram_bot env | grep TELEGRAM
 curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
 
 # Установить новый webhook (если используется)
-curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://fsp.insflow.online/telegram/webhook"
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://fsp.tw1.ru/telegram/webhook"
 ```
 
 ---
@@ -306,9 +306,9 @@ curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://fsp.in
 ## ✅ Этап 8: Финальная проверка и переключение
 
 ### 8.1 Чек-лист проверки на Timeweb
-- [ ] https://fsp.insflow.online открывается
-- [ ] https://fsp.insflow.online/api/health/ возвращает OK
-- [ ] https://fsp.insflow.online/api/current/ возвращает данные
+- [ ] https://fsp.tw1.ru открывается
+- [ ] https://fsp.tw1.ru/api/health/ возвращает OK
+- [ ] https://fsp.tw1.ru/api/current/ возвращает данные
 - [ ] SSL сертификат валидный (зеленый замок)
 - [ ] HTTP редирект на HTTPS работает
 - [ ] Telegram бот отвечает на команды /start, /info, /help
@@ -323,16 +323,16 @@ curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://fsp.in
 docker-compose -f docker-compose.prod.yml ps
 
 # Проверка здоровья
-curl https://fsp.insflow.online/api/health/
+curl https://fsp.tw1.ru/api/health/
 
 # Проверка API
-curl https://fsp.insflow.online/api/current/
+curl https://fsp.tw1.ru/api/current/
 
 # Проверка редиректа HTTP -> HTTPS
-curl -I http://fsp.insflow.online/
+curl -I http://fsp.tw1.ru/
 
 # Проверка SSL сертификата
-openssl s_client -connect fsp.insflow.online:443 -servername fsp.insflow.online
+openssl s_client -connect fsp.tw1.ru:443 -servername fsp.tw1.ru
 
 # Просмотр логов
 docker logs fsp_web --tail 50
@@ -343,7 +343,7 @@ docker logs fsp_nginx --tail 50
 ### 8.3 Параллельная работа (опционально)
 Можно держать оба сервера работающими несколько дней для проверки:
 - Старый сервер: fsp.onbr.site
-- Новый сервер: fsp.insflow.online
+- Новый сервер: fsp.tw1.ru
 
 ### 8.4 Обновление внешних ссылок
 - Обновить ссылки в документации
@@ -543,8 +543,8 @@ nethogs
 **Решения**:
 ```bash
 # Проверить DNS
-dig fsp.insflow.online A
-nslookup fsp.insflow.online
+dig fsp.tw1.ru A
+nslookup fsp.tw1.ru
 
 # Проверить через онлайн сервисы
 # https://dnschecker.org/
@@ -577,14 +577,14 @@ docker-compose -f docker-compose.prod.yml stop nginx
 docker ps | grep nginx
 
 # Проверить что домен указывает на правильный IP
-dig fsp.insflow.online A
+dig fsp.tw1.ru A
 
 # Попробовать получить сертификат с подробными логами
 docker run -it --rm \
   -v "$(pwd)/ssl_copy:/etc/letsencrypt" \
   -p 80:80 \
   certbot/certbot certonly --standalone \
-  -d fsp.insflow.online \
+  -d fsp.tw1.ru \
   --email your-email@example.com \
   --agree-tos --non-interactive \
   --verbose
