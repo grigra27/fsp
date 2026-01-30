@@ -30,7 +30,6 @@ services:
   telegram-bot:
     image: ghcr.io/grigra27/fair_sber_price-bot:latest
     container_name: fsp_telegram_bot
-    user: "1000:1000"
     restart: unless-stopped
     environment:
       - SECRET_KEY=${SECRET_KEY}
@@ -56,11 +55,9 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.conf.nossl:/etc/nginx/nginx.conf:ro
       - static_files:/var/www/static:ro
-      - ./ssl_copy:/etc/letsencrypt:ro
     depends_on:
       - web
     networks:

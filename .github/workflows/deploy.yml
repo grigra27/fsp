@@ -1,4 +1,4 @@
-name: Deploy to DigitalOcean
+name: Deploy to Timeweb
 
 on:
   push:
@@ -106,14 +106,13 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Auto-setup and Deploy to DigitalOcean
+    - name: Auto-setup and Deploy to Timeweb
       uses: appleboy/ssh-action@v1.0.0
       with:
-        host: ${{ secrets.DO_HOST }}
-        username: ${{ secrets.DO_USERNAME }}
-        key: ${{ secrets.DO_SSH_KEY }}
-        port: ${{ secrets.DO_PORT }}
-        passphrase: ${{ secrets.DO_SSH_PASSPHRASE }}
+        host: ${{ secrets.TW_HOST }}
+        username: ${{ secrets.TW_USERNAME }}
+        key: ${{ secrets.TW_SSH_KEY }}
+        port: ${{ secrets.TW_PORT }}
         script: |
           # Auto-setup server if needed
           echo "🚀 Starting auto-deployment (simplified version)..."
@@ -298,5 +297,5 @@ jobs:
           done
           
           echo "🎉 Deployment completed!"
-          echo "🌐 Your application should be available at: https://fsp.onbr.site"
+          echo "🌐 Your application should be available at: https://fsp.tw1.ru"
           echo "💾 Resource usage: ~150-250 MB RAM (simplified version)"
