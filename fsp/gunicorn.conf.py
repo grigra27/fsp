@@ -10,7 +10,7 @@ backlog = 2048
 workers = min(multiprocessing.cpu_count() * 2 + 1, 4)  # Limit to 4 workers max
 worker_class = "sync"
 worker_connections = 1000
-timeout = 30
+timeout = 90
 keepalive = 2
 
 # Restart workers after this many requests, to prevent memory leaks
