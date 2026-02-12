@@ -57,12 +57,12 @@ services:
       - "80:80"
     volumes:
       - ./nginx.conf.nossl:/etc/nginx/nginx.conf:ro
+      - /dev/null:/etc/nginx/conf.d/default.conf:ro
       - static_files:/var/www/static:ro
     depends_on:
       - web
     networks:
       - fsp_network
-    command: ["/bin/sh", "-c", "rm -f /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
 
 volumes:
   static_files:
