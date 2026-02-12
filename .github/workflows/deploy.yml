@@ -88,6 +88,9 @@ jobs:
         tags: ${{ steps.meta-web.outputs.tags }}
         labels: ${{ steps.meta-web.outputs.labels }}
     
+    - name: Output web image digest
+      run: echo "Web image pushed with tags - ${{ steps.meta-web.outputs.tags }}"
+    
     - name: Build and push bot image
       uses: docker/build-push-action@v5
       with:
@@ -96,6 +99,9 @@ jobs:
         push: true
         tags: ${{ steps.meta-bot.outputs.tags }}
         labels: ${{ steps.meta-bot.outputs.labels }}
+    
+    - name: Output bot image digest
+      run: echo "Bot image pushed with tags - ${{ steps.meta-bot.outputs.tags }}"
 
   deploy:
     needs: build-and-push
@@ -130,8 +136,8 @@ jobs:
           
           # Create necessary directories with proper permissions
           mkdir -p fsp/logs fsp/staticfiles fsp/db
-          chmod 755 fsp/logs fsp/staticfiles fsp/db
-          chown -R 1000:1000 fsp/ || true
+          chmod 777 fsp/db
+          chmod 777 fsp/logs
           
           # Create environment file (simplified - no PostgreSQL/Redis)
           cat > .env << EOF
@@ -141,8 +147,59 @@ jobs:
           TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
           EOF
           
-          # Copy nginx config from repository
-          curl -s https://raw.githubusercontent.com/grigra27/fsp/main/nginx.conf -o nginx.conf
+          # Create HTTP-only nginx config (no SSL)
+          cat > nginx.conf << 'NGINX_EOF'
+          events {
+              worker_connections 2048;
+              use epoll;
+              multi_accept on;
+          }
+          
+          http {
+              include /etc/nginx/mime.types;
+              default_type application/octet-stream;
+          
+              access_log /var/log/nginx/access.log;
+              error_log /var/log/nginx/error.log warn;
+          
+              sendfile on;
+              tcp_nopush on;
+              tcp_nodelay on;
+              keepalive_timeout 65;
+              client_max_body_size 10M;
+          
+              gzip on;
+              gzip_vary on;
+              gzip_min_length 1024;
+              gzip_comp_level 6;
+              gzip_types text/plain text/css text/xml text/javascript application/javascript application/json;
+          
+              upstream django_web {
+                  server web:8000;
+                  keepalive 32;
+              }
+          
+              server {
+                  listen 80;
+                  server_name fsp.tw1.ru;
+          
+                  location /static/ {
+                      alias /var/www/static/;
+                      expires 1y;
+                      add_header Cache-Control "public, immutable";
+                  }
+          
+                  location / {
+                      proxy_pass http://django_web;
+                      proxy_set_header Host \$host;
+                      proxy_set_header X-Real-IP \$remote_addr;
+                      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                      proxy_http_version 1.1;
+                      proxy_set_header Connection "";
+                  }
+              }
+          }
+          NGINX_EOF
           
           # Copy updated docker-compose.prod.yml (simplified version)
           cat > docker-compose.prod.yml << 'COMPOSE_EOF'
@@ -178,7 +235,6 @@ jobs:
             telegram-bot:
               image: ghcr.io/grigra27/fair_sber_price-bot:latest
               container_name: fsp_telegram_bot
-              user: "1000:1000"
               restart: unless-stopped
               environment:
                 - SECRET_KEY=${SECRET_KEY}
@@ -204,11 +260,9 @@ jobs:
               restart: unless-stopped
               ports:
                 - "80:80"
-                - "443:443"
               volumes:
                 - ./nginx.conf:/etc/nginx/nginx.conf:ro
                 - static_files:/var/www/static:ro
-                - ./ssl_copy:/etc/letsencrypt:ro
               depends_on:
                 - web
               networks:
@@ -255,18 +309,26 @@ jobs:
           # Login to GitHub Container Registry
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
-          # Pull latest images
-          echo "📥 Pulling latest Docker images..."
-          docker pull ghcr.io/grigra27/fair_sber_price-web:latest
-          docker pull ghcr.io/grigra27/fair_sber_price-bot:latest
-          
-          # Stop old containers
+          # Stop old containers first
           echo "🛑 Stopping old containers..."
           docker-compose -f docker-compose.prod.yml down --remove-orphans || true
           
-          # Start new containers
-          echo "🚀 Starting new containers..."
-          docker-compose -f docker-compose.prod.yml up -d
+          # Remove old images to force fresh pull
+          echo "🗑️ Removing old images..."
+          docker rmi ghcr.io/grigra27/fair_sber_price-web:latest || true
+          docker rmi ghcr.io/grigra27/fair_sber_price-bot:latest || true
+          
+          # Pull latest images with explicit pull
+          echo "📥 Pulling latest Docker images..."
+          docker-compose -f docker-compose.prod.yml pull --ignore-pull-failures
+          
+          # Verify image IDs before deployment
+          echo "🔍 Verifying pulled images..."
+          docker images | grep fair_sber_price
+          
+          # Start new containers with force recreate
+          echo "🚀 Starting new containers (force recreate)..."
+          docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
           
           # Clean up old images
           docker image prune -f
@@ -274,6 +336,14 @@ jobs:
           # Wait for services to start
           echo "⏳ Waiting for services to start..."
           sleep 30
+          
+          # Show running containers with image info
+          echo "📦 Running containers:"
+          docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+          
+          # Show image creation dates
+          echo "🕐 Image timestamps:"
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}" | grep fair_sber_price
           
           # Check deployment status
           echo "📊 Checking deployment status..."
