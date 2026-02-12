@@ -30,7 +30,7 @@ class SberPriceService:
             'market': 'https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=marketdata&marketdata.columns=MARKETPRICE'
         }
     
-    def _make_api_call(self, url: str, api_name: str, timeout: int = 5) -> Optional[requests.Response]:
+    def _make_api_call(self, url: str, api_name: str, timeout: int = 15) -> Optional[requests.Response]:
         """Make API call with error handling"""
         start_time = time.time()
         
