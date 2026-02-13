@@ -62,7 +62,16 @@ class SberPriceService:
     
     def get_cbr_url(self, used_month: str) -> str:
         """Generate CBR URL for the given month"""
-        return f'{self.cbr_base_url}?regnum=1481&dt=2025-{used_month}-01'
+        now = timezone.localtime(timezone.now())
+        used_month_int = int(used_month)
+
+        # If we are before the 25th and requested month is greater than current
+        # month, it belongs to the previous year (e.g. January -> December).
+        year = now.year
+        if now.day <= 25 and used_month_int > now.month:
+            year -= 1
+
+        return f'{self.cbr_base_url}?regnum=1481&dt={year}-{used_month}-01'
     
     def parse_own_capital(self) -> Optional[int]:
         """Parse own capital from CBR website with caching"""
