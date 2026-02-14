@@ -132,24 +132,29 @@ async def risks(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send current price information"""
+    message = update.effective_message
+    if message is None:
+        logger.warning('No effective message found for update in send_current_info')
+        return
+
     try:
         # Send "typing" action
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-        
+
         # Use sync_to_async to call Django service methods
         get_current_data = sync_to_async(sber_service.get_current_data)
         data = await get_current_data()
-        
+
         # Check if we have valid data
         if data['moex_price'] is None or data['fair_price'] is None:
-            await update.message.reply_text(
+            await message.reply_text(
                 "⚠️ Не удалось получить актуальные данные.\n"
                 "Возможно, биржа закрыта или есть проблемы с API."
             )
             return
-        
+
         emoji = SCORE_EMOJI.get(data['price_score'], '⚪')
-        
+
         msg = (
             f"📊 Данные по акции Сбербанка:\n\n"
             f"💰 MOEX цена: {data['moex_price']} ₽\n"
@@ -159,13 +164,13 @@ async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{emoji} Оценка: {data['price_score']}\n\n"
             f"🕐 Обновлено: {data['timestamp'].strftime('%d.%m.%Y %H:%M')}"
         )
-        
-        await update.message.reply_text(msg, reply_markup=get_main_keyboard())
+
+        await message.reply_text(msg, reply_markup=get_main_keyboard())
         logger.info(f"Sent price info to user {update.effective_user.id}")
-        
+
     except Exception as e:
         logger.error(f"Error sending current info: {e}")
-        await update.message.reply_text(
+        await message.reply_text(
             "❌ Произошла ошибка при получении данных.\n"
             "Попробуйте позже или обратитесь к администратору."
         )
