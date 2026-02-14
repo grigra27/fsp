@@ -14,6 +14,7 @@ load_dotenv(BASE_DIR.parent / '.env')  # Try parent directory (repository root)
 # Security
 SECRET_KEY = os.getenv('SECRET_KEY', get_random_secret_key())
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+BOT_ONLY_MODE = os.getenv('BOT_ONLY_MODE', 'True').lower() == 'true'
 
 # ALLOWED_HOSTS configuration
 if DEBUG:
