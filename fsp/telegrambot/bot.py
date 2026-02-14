@@ -4,6 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import BadRequest
 from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 from asgiref.sync import sync_to_async
+from django.utils import timezone
 from price.services import sber_service
 
 logger = logging.getLogger('telegrambot')
@@ -49,14 +50,6 @@ THESIS_TEXT = (
     "🔴 Очень дорого: > 1.4"
 )
 
-RISKS_TEXT = (
-    "⚠️ Основные риски\n\n"
-    "• Санкционные риски\n"
-    "• Макроэкономическая нестабильность\n"
-    "• Регулятивные изменения\n"
-    "• Кредитные риски"
-)
-
 
 def get_main_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
@@ -64,7 +57,6 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("🧠 Почему P/B = 1", callback_data="method")],
         [InlineKeyboardButton("📏 Диапазон 1.0–1.2", callback_data="range")],
         [InlineKeyboardButton("📌 Инвесттезис", callback_data="thesis")],
-        [InlineKeyboardButton("⚠️ Риски", callback_data="risks")],
     ])
 
 
@@ -77,11 +69,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/thesis - инвестиционный тезис\n"
         "/method - почему P/B = 1\n"
         "/range - почему диапазон 1.0–1.2\n"
-        "/risks - ключевые риски\n"
         "/help - справка"
     )
     await update.message.reply_text(welcome_msg, reply_markup=get_main_keyboard())
-    await send_current_info(update, context)
 
 
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -97,7 +87,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📌 /thesis - инвестиционный тезис\n"
         "🧠 /method - методология оценки P/B\n"
         "📏 /range - диапазон справедливой оценки\n"
-        "⚠️ /risks - ключевые риски\n"
         "❓ /help - эта справка\n\n"
         "🔄 Данные обновляются автоматически с кешированием\n"
         "⏰ Кеш: 1 минута в торговые часы, 5 минут в остальное время\n\n"
@@ -125,11 +114,6 @@ async def range_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(RANGE_TEXT, reply_markup=get_main_keyboard())
 
 
-async def risks(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /risks command"""
-    await update.message.reply_text(RISKS_TEXT, reply_markup=get_main_keyboard())
-
-
 async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send current price information"""
     message = update.effective_message
@@ -155,6 +139,8 @@ async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         emoji = SCORE_EMOJI.get(data['price_score'], '⚪')
 
+        server_now = timezone.localtime(timezone.now())
+
         msg = (
             f"📊 Данные по акции Сбербанка:\n\n"
             f"💰 MOEX цена: {data['moex_price']} ₽\n"
@@ -162,7 +148,7 @@ async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📈 Справедливая +20%: {data['fair_price_20_percent']} ₽\n"
             f"📊 P/B коэффициент: {data['pb_ratio']}\n"
             f"{emoji} Оценка: {data['price_score']}\n\n"
-            f"🕐 Обновлено: {data['timestamp'].strftime('%d.%m.%Y %H:%M')}"
+            f"🕐 Обновлено: {server_now.strftime('%d.%m.%Y %H:%M')}"
         )
 
         await message.reply_text(msg, reply_markup=get_main_keyboard())
@@ -192,8 +178,6 @@ async def handle_menu_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.message.reply_text(RANGE_TEXT, reply_markup=get_main_keyboard())
     elif query.data == 'thesis':
         await query.message.reply_text(THESIS_TEXT, reply_markup=get_main_keyboard())
-    elif query.data == 'risks':
-        await query.message.reply_text(RISKS_TEXT, reply_markup=get_main_keyboard())
 
 
 async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -235,7 +219,6 @@ def run_bot():
         app.add_handler(CommandHandler("thesis", thesis))
         app.add_handler(CommandHandler("method", method))
         app.add_handler(CommandHandler("range", range_info))
-        app.add_handler(CommandHandler("risks", risks))
         app.add_handler(CallbackQueryHandler(handle_menu_action))
         
         # Handle unknown commands
