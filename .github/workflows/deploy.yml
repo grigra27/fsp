@@ -103,6 +103,11 @@ jobs:
           # Create runtime directories
           mkdir -p fsp/logs fsp/staticfiles fsp/db
 
+          # Ensure bind-mounted paths are writable for non-root container user
+          touch fsp/db/db.sqlite3
+          chmod 777 fsp/db fsp/logs fsp/staticfiles
+          chmod 666 fsp/db/db.sqlite3
+
           # Recreate environment file (handles stale permissions/ownership)
           rm -rf .env
           cat > .env << EOF
