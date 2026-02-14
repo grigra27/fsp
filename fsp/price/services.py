@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 import time
 import requests
 from lxml import html
@@ -23,12 +24,18 @@ class SberPriceService:
                           'Gecko/20100101 Firefox/45.0')
         }
         
-        # MOEX API URLs (using HTTP instead of HTTPS due to hosting restrictions)
-        self.moex_urls = {
-            'current': 'http://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=marketdata&marketdata.columns=LAST',
-            'prev': 'http://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=securities&securities.columns=PREVPRICE',
-            'market': 'http://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=marketdata&marketdata.columns=MARKETPRICE'
+        # MOEX API URLs: try HTTPS first, then HTTP fallback if configured
+        self.moex_url_templates = {
+            'current': '/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=marketdata&marketdata.columns=LAST',
+            'prev': '/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=securities&securities.columns=PREVPRICE',
+            'market': '/iss/engines/stock/markets/shares/boards/TQBR/securities/SBER.json?iss.meta=off&iss.only=marketdata&marketdata.columns=MARKETPRICE'
         }
+        self.moex_base_urls = self._get_moex_base_urls()
+        self.moex_request_timeout = float(os.getenv('MOEX_REQUEST_TIMEOUT', '4'))
+        self.moex_retries = int(os.getenv('MOEX_RETRIES', '1'))
+        self.moex_max_total_seconds = float(os.getenv('MOEX_MAX_TOTAL_SECONDS', '12'))
+        self.cbr_request_timeout = float(os.getenv('CBR_REQUEST_TIMEOUT', '8'))
+        self.cbr_retries = int(os.getenv('CBR_RETRIES', '2'))
     
     def _make_api_call(self, url: str, api_name: str, timeout: int = 20, retries: int = 3) -> Optional[requests.Response]:
         """Make API call with error handling and retry logic"""
@@ -53,6 +60,16 @@ class SberPriceService:
         
         return None
     
+
+    def _get_moex_base_urls(self) -> list[str]:
+        """Return MOEX base URLs in priority order."""
+        configured = os.getenv('MOEX_BASE_URLS')
+        if configured:
+            return [url.strip().rstrip('/') for url in configured.split(',') if url.strip()]
+
+        # Default: HTTPS first (typical VPS/firewall-friendly), then HTTP fallback.
+        return ['https://iss.moex.com', 'http://iss.moex.com']
+
     def get_used_month(self) -> str:
         """Get the month to use for CBR data based on current date"""
         now = timezone.localtime(timezone.now())
@@ -84,7 +101,7 @@ class SberPriceService:
         
         try:
             url = self.get_cbr_url(self.get_used_month())
-            response = self._make_api_call(url, 'cbr')
+            response = self._make_api_call(url, 'cbr', timeout=self.cbr_request_timeout, retries=self.cbr_retries)
             
             if not response:
                 return None
@@ -134,35 +151,53 @@ class SberPriceService:
             logger.info(f'Using cached MOEX price: {cached_value}')
             return cached_value
         
-        # Try different price sources in order of preference
-        for price_type, url in self.moex_urls.items():
-            try:
-                response = self._make_api_call(url, f'moex_{price_type}', timeout=20, retries=2)
-                if not response:
+        # Try different price sources in order of preference and base URL failover
+        start_time = time.monotonic()
+        deadline = start_time + self.moex_max_total_seconds
+
+        for base_url in self.moex_base_urls:
+            for price_type, url_template in self.moex_url_templates.items():
+                if time.monotonic() >= deadline:
+                    elapsed = round(time.monotonic() - start_time, 2)
+                    logger.warning(f"MOEX lookup budget exceeded ({elapsed}s). Returning best available data.")
+                    break
+
+                try:
+                    url = f"{base_url}{url_template}"
+                    response = self._make_api_call(
+                        url,
+                        f'moex_{price_type}',
+                        timeout=self.moex_request_timeout,
+                        retries=self.moex_retries,
+                    )
+                    if not response:
+                        continue
+
+                    data = response.json()
+
+                    if price_type == 'current':
+                        price = data['marketdata']['data'][0][0]
+                    elif price_type == 'prev':
+                        price = data['securities']['data'][0][0]
+                    else:  # market
+                        price = data['marketdata']['data'][0][0]
+
+                    if price is not None:
+                        # Cache for 5 minutes during trading hours, 30 minutes otherwise
+                        cache_timeout = 300 if self._is_trading_hours() else 1800
+                        cache.set(cache_key, price, cache_timeout)
+                        # Also save as fallback with longer TTL (7 days)
+                        cache.set(f'{cache_key}_fallback', price, 604800)
+                        logger.info(f'Got MOEX price from {price_type} ({base_url}): {price}')
+                        return price
+
+                except (KeyError, IndexError, ValueError) as e:
+                    logger.warning(f"Failed to parse {price_type} price from {base_url}: {e}")
                     continue
-                
-                data = response.json()
-                
-                if price_type == 'current':
-                    price = data['marketdata']['data'][0][0]
-                elif price_type == 'prev':
-                    price = data['securities']['data'][0][0]
-                else:  # market
-                    price = data['marketdata']['data'][0][0]
-                
-                if price is not None:
-                    # Cache for 5 minutes during trading hours, 30 minutes otherwise
-                    cache_timeout = 300 if self._is_trading_hours() else 1800
-                    cache.set(cache_key, price, cache_timeout)
-                    # Also save as fallback with longer TTL (7 days)
-                    cache.set(f'{cache_key}_fallback', price, 604800)
-                    logger.info(f'Got MOEX price from {price_type}: {price}')
-                    return price
-                    
-            except (KeyError, IndexError, ValueError) as e:
-                logger.warning(f"Failed to parse {price_type} price: {e}")
+            else:
                 continue
-        
+            break
+
         # If all sources failed, try to use fallback cache
         fallback_value = cache.get(f'{cache_key}_fallback')
         if fallback_value is not None:
