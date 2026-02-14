@@ -8,7 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME_WEB: grigra27/fair_sber_price-web
   IMAGE_NAME_BOT: grigra27/fair_sber_price-bot
 
 jobs:
@@ -59,16 +58,6 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Extract metadata for web image
-      id: meta-web
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}
-        tags: |
-          type=ref,event=branch
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
-    
     - name: Extract metadata for bot image
       id: meta-bot
       uses: docker/metadata-action@v5
@@ -78,18 +67,6 @@ jobs:
           type=ref,event=branch
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
-    
-    - name: Build and push web image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile.web
-        push: true
-        tags: ${{ steps.meta-web.outputs.tags }}
-        labels: ${{ steps.meta-web.outputs.labels }}
-    
-    - name: Output web image digest
-      run: echo "Web image pushed with tags - ${{ steps.meta-web.outputs.tags }}"
     
     - name: Build and push bot image
       uses: docker/build-push-action@v5
@@ -107,148 +84,55 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Auto-setup and Deploy to Timeweb
+    - name: Deploy bot to Timeweb
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.TW_HOST }}
         username: ${{ secrets.TW_USERNAME }}
         key: ${{ secrets.TW_SSH_KEY }}
-        port: ${{ secrets.TW_PORT }}
         script: |
-          # Auto-setup server if needed
-          echo "🚀 Starting auto-deployment (simplified version)..."
-          
-          # Install Docker Compose if not present
-          if ! command -v docker-compose &> /dev/null; then
-            echo "📦 Installing Docker Compose..."
-            curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            chmod +x /usr/local/bin/docker-compose
-          fi
-          
+          set -e
+          echo "🚀 Starting deployment..."
+
           # Create application directory
           mkdir -p /opt/fair-sber-price
           cd /opt/fair-sber-price
-          
-          # Create necessary directories with proper permissions
+
+          # Create runtime directories
           mkdir -p fsp/logs fsp/staticfiles fsp/db
-          chmod 777 fsp/db
-          chmod 777 fsp/logs
-          
-          # Create environment file (simplified - no PostgreSQL/Redis)
+
+          # Create environment file
           cat > .env << EOF
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           DEBUG=False
+          BOT_ONLY_MODE=True
           ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
           TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
           EOF
-          
-          # Copy nginx config from repository
-          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-               -H "Accept: application/vnd.github.v3.raw" \
-               -o nginx.conf.nossl \
-               -L https://api.github.com/repos/${{ github.repository }}/contents/nginx.conf.nossl?ref=${{ github.sha }}
-          
+
           # Copy docker-compose config from repository
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                -H "Accept: application/vnd.github.v3.raw" \
                -o docker-compose.prod.yml \
                -L https://api.github.com/repos/${{ github.repository }}/contents/docker-compose.prod.yml?ref=${{ github.sha }}
-          
-          # Setup firewall if ufw is available
-          if command -v ufw &> /dev/null; then
-            ufw allow 22/tcp 2>/dev/null || true
-            ufw allow 80/tcp 2>/dev/null || true
-            ufw allow 443/tcp 2>/dev/null || true
-            ufw --force enable 2>/dev/null || true
-          fi
-          
-          # Create systemd service for auto-restart
-          cat > /etc/systemd/system/fair-sber-price.service << 'SERVICE_EOF'
-          [Unit]
-          Description=Fair Sber Price Application (Simplified)
-          Requires=docker.service
-          After=docker.service
-          
-          [Service]
-          Type=oneshot
-          RemainAfterExit=yes
-          WorkingDirectory=/opt/fair-sber-price
-          ExecStart=/usr/local/bin/docker-compose -f docker-compose.prod.yml up -d
-          ExecStop=/usr/local/bin/docker-compose -f docker-compose.prod.yml down
-          TimeoutStartSec=0
-          
-          [Install]
-          WantedBy=multi-user.target
-          SERVICE_EOF
-          
-          systemctl daemon-reload
-          systemctl enable fair-sber-price.service
-          
+
           # Login to GitHub Container Registry
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          
-          # Stop old containers first
-          echo "🛑 Stopping old containers..."
-          docker-compose -f docker-compose.prod.yml down --remove-orphans || true
-          
-          # Remove old images to force fresh pull
-          echo "🗑️ Removing old images..."
-          docker rmi ghcr.io/grigra27/fair_sber_price-web:latest || true
-          docker rmi ghcr.io/grigra27/fair_sber_price-bot:latest || true
-          
-          # Pull latest images with explicit pull
+
+          # Pull and restart bot service
           echo "📥 Pulling latest Docker images..."
-          docker-compose -f docker-compose.prod.yml pull --ignore-pull-failures
-          
-          # Verify image IDs before deployment
-          echo "🔍 Verifying pulled images..."
-          docker images | grep fair_sber_price
-          
-          # Start new containers with force recreate
-          echo "🚀 Starting new containers (force recreate)..."
-          docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
-          
-          # Clean up old images
-          docker image prune -f
-          
-          # Wait for services to start
-          echo "⏳ Waiting for services to start..."
-          sleep 30
-          
-          # Show running containers with image info
+          docker-compose -f docker-compose.prod.yml pull telegram-bot
+          docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans telegram-bot
+
+          # Show status
           echo "📦 Running containers:"
           docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-          
-          # Show image creation dates
-          echo "🕐 Image timestamps:"
-          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}" | grep fair_sber_price
-          
-          # Check deployment status
+
           echo "📊 Checking deployment status..."
           docker-compose -f docker-compose.prod.yml ps
-          
-          # Test web service
-          echo "🏥 Testing web service..."
-          for i in {1..10}; do
-            if curl -f http://localhost:8000/api/health/ 2>/dev/null; then
-              echo "✅ Web service is up!"
-              break
-            else
-              echo "⏳ Attempt $i/10 failed, retrying in 5 seconds..."
-              if [ $i -eq 10 ]; then
-                echo "❌ Web service failed to start. Showing logs:"
-                docker-compose -f docker-compose.prod.yml logs --tail=50 web
-                docker-compose -f docker-compose.prod.yml logs --tail=50 telegram-bot
-              fi
-              sleep 5
-            fi
-          done
-          
+
+          docker image prune -f
+
           echo "🎉 Deployment completed!"
-          echo "🌐 Your application should be available at: https://fsp.tw1.ru"
-          echo "💾 Resource usage: ~150-250 MB RAM (simplified version)"
