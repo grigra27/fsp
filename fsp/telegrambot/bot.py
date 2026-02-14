@@ -1,11 +1,71 @@
 import os
 import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import BadRequest
+from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 from asgiref.sync import sync_to_async
 from price.services import sber_service
 
 logger = logging.getLogger('telegrambot')
+
+
+SCORE_EMOJI = {
+    'дешево': '🟢',
+    'справедливо': '🔵',
+    'чуть дорого': '🟡',
+    'дорого': '🔴',
+}
+
+METHOD_TEXT = (
+    "🧠 Почему P/B = 1 считается справедливой оценкой?\n\n"
+    "P/B (Price-to-Book) = 1 означает, что рыночная стоимость банка равна "
+    "его балансовой стоимости (собственному капиталу).\n\n"
+    "Для банков это базовый ориентир, потому что:\n"
+    "• активы банков в основном финансовые и ближе к рыночной цене;\n"
+    "• исторически P/B = 1 — часто встречаемый уровень для сектора;\n"
+    "• при P/B < 1 акция может быть недооцененной."
+)
+
+RANGE_TEXT = (
+    "📏 Почему диапазон P/B = 1.0–1.2?\n\n"
+    "Этот диапазон считается зоной справедливой оценки для банков:\n"
+    "• P/B = 1.0 — базовая справедливая стоимость;\n"
+    "• P/B = 1.2 — премия за качество управления и перспективы роста;\n"
+    "• выше 1.2 — акции становятся дорогими;\n"
+    "• ниже 1.0 — потенциально недооцененные."
+)
+
+THESIS_TEXT = (
+    "📌 Инвестиционный тезис\n\n"
+    "Почему этот банк:\n"
+    "• Лидер рынка: крупнейший банк России с долей ~30%;\n"
+    "• Стабильность: государственная поддержка и системная значимость;\n"
+    "• Дивиденды: высокая дивидендная доходность;\n"
+    "• Цифровизация: инвестиции в IT и экосистему.\n\n"
+    "Шкала оценки по P/B:\n"
+    "🟢 Дешево: < 1.0\n"
+    "🔵 Справедливо: 1.0–1.2\n"
+    "🟡 Дорого: 1.2–1.4\n"
+    "🔴 Очень дорого: > 1.4"
+)
+
+RISKS_TEXT = (
+    "⚠️ Основные риски\n\n"
+    "• Санкционные риски\n"
+    "• Макроэкономическая нестабильность\n"
+    "• Регулятивные изменения\n"
+    "• Кредитные риски"
+)
+
+
+def get_main_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📊 Текущая оценка", callback_data="current")],
+        [InlineKeyboardButton("🧠 Почему P/B = 1", callback_data="method")],
+        [InlineKeyboardButton("📏 Диапазон 1.0–1.2", callback_data="range")],
+        [InlineKeyboardButton("📌 Инвесттезис", callback_data="thesis")],
+        [InlineKeyboardButton("⚠️ Риски", callback_data="risks")],
+    ])
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -13,10 +73,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_msg = (
         "🏦 Добро пожаловать в бот справедливой оценки акций Сбербанка!\n\n"
         "Доступные команды:\n"
-        "/info - получить текущие данные\n"
-        "/help - показать эту справку"
+        "/info - текущая оценка\n"
+        "/thesis - инвестиционный тезис\n"
+        "/method - почему P/B = 1\n"
+        "/range - почему диапазон 1.0–1.2\n"
+        "/risks - ключевые риски\n"
+        "/help - справка"
     )
-    await update.message.reply_text(welcome_msg)
+    await update.message.reply_text(welcome_msg, reply_markup=get_main_keyboard())
     await send_current_info(update, context)
 
 
@@ -30,6 +94,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_msg = (
         "🤖 Справка по боту:\n\n"
         "📊 /info - текущие данные по акции\n"
+        "📌 /thesis - инвестиционный тезис\n"
+        "🧠 /method - методология оценки P/B\n"
+        "📏 /range - диапазон справедливой оценки\n"
+        "⚠️ /risks - ключевые риски\n"
         "❓ /help - эта справка\n\n"
         "🔄 Данные обновляются автоматически с кешированием\n"
         "⏰ Кеш: 1 минута в торговые часы, 5 минут в остальное время\n\n"
@@ -39,7 +107,27 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🟡 чуть дорого - P/B 1.2-1.4\n"
         "🔴 дорого - P/B > 1.4"
     )
-    await update.message.reply_text(help_msg)
+    await update.message.reply_text(help_msg, reply_markup=get_main_keyboard())
+
+
+async def thesis(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /thesis command"""
+    await update.message.reply_text(THESIS_TEXT, reply_markup=get_main_keyboard())
+
+
+async def method(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /method command"""
+    await update.message.reply_text(METHOD_TEXT, reply_markup=get_main_keyboard())
+
+
+async def range_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /range command"""
+    await update.message.reply_text(RANGE_TEXT, reply_markup=get_main_keyboard())
+
+
+async def risks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /risks command"""
+    await update.message.reply_text(RISKS_TEXT, reply_markup=get_main_keyboard())
 
 
 async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -60,15 +148,7 @@ async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Format price score with emoji
-        score_emoji = {
-            'дешево': '🟢',
-            'справедливо': '🔵', 
-            'чуть дорого': '🟡',
-            'дорого': '🔴'
-        }
-        
-        emoji = score_emoji.get(data['price_score'], '⚪')
+        emoji = SCORE_EMOJI.get(data['price_score'], '⚪')
         
         msg = (
             f"📊 Данные по акции Сбербанка:\n\n"
@@ -80,7 +160,7 @@ async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🕐 Обновлено: {data['timestamp'].strftime('%d.%m.%Y %H:%M')}"
         )
         
-        await update.message.reply_text(msg)
+        await update.message.reply_text(msg, reply_markup=get_main_keyboard())
         logger.info(f"Sent price info to user {update.effective_user.id}")
         
     except Exception as e:
@@ -89,6 +169,26 @@ async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ Произошла ошибка при получении данных.\n"
             "Попробуйте позже или обратитесь к администратору."
         )
+
+
+async def handle_menu_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle inline button actions."""
+    query = update.callback_query
+    try:
+        await query.answer()
+    except BadRequest as error:
+        logger.warning(f"Callback answer skipped: {error}")
+
+    if query.data == 'current':
+        await send_current_info(update, context)
+    elif query.data == 'method':
+        await query.message.reply_text(METHOD_TEXT, reply_markup=get_main_keyboard())
+    elif query.data == 'range':
+        await query.message.reply_text(RANGE_TEXT, reply_markup=get_main_keyboard())
+    elif query.data == 'thesis':
+        await query.message.reply_text(THESIS_TEXT, reply_markup=get_main_keyboard())
+    elif query.data == 'risks':
+        await query.message.reply_text(RISKS_TEXT, reply_markup=get_main_keyboard())
 
 
 async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -127,6 +227,11 @@ def run_bot():
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("info", info))
         app.add_handler(CommandHandler("help", help_command))
+        app.add_handler(CommandHandler("thesis", thesis))
+        app.add_handler(CommandHandler("method", method))
+        app.add_handler(CommandHandler("range", range_info))
+        app.add_handler(CommandHandler("risks", risks))
+        app.add_handler(CallbackQueryHandler(handle_menu_action))
         
         # Handle unknown commands
         app.add_handler(MessageHandler(filters.COMMAND, handle_unknown))

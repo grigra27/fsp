@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 from unittest import mock
 
 from django.core.cache import cache
@@ -70,6 +71,44 @@ class SberPriceServiceTests(SimpleTestCase):
 
         self.assertEqual(result, 300.12)
         self.assertEqual(cache.get('moex_price'), 300.12)
+
+
+    @mock.patch.dict(os.environ, {'MOEX_BASE_URLS': 'https://a.example,http://b.example'}, clear=False)
+    def test_get_moex_base_urls_from_env(self):
+        service = SberPriceService()
+
+        self.assertEqual(service.moex_base_urls, ['https://a.example', 'http://b.example'])
+
+    def test_get_moex_price_tries_next_base_url_after_failure(self):
+        mock_response = mock.Mock()
+        mock_response.json.return_value = {
+            'marketdata': {'data': [[301.11]]}
+        }
+
+        side_effect = [None, mock_response]
+
+        with mock.patch.object(self.service, '_make_api_call', side_effect=side_effect) as mocked_api:
+            self.service.moex_base_urls = ['https://iss.moex.com', 'http://iss.moex.com']
+            self.service.moex_url_templates = {'current': '/endpoint'}
+            result = self.service.get_moex_price()
+
+        self.assertEqual(result, 301.11)
+        called_urls = [call.args[0] for call in mocked_api.call_args_list]
+        self.assertEqual(called_urls, ['https://iss.moex.com/endpoint', 'http://iss.moex.com/endpoint'])
+
+
+    def test_get_moex_price_respects_time_budget(self):
+        with mock.patch.object(self.service, '_make_api_call', return_value=None) as mocked_api:
+            self.service.moex_base_urls = ['https://iss.moex.com']
+            self.service.moex_url_templates = {'current': '/a', 'prev': '/b'}
+            self.service.moex_request_timeout = 1
+            self.service.moex_retries = 1
+            self.service.moex_max_total_seconds = 0
+
+            result = self.service.get_moex_price()
+
+        self.assertIsNone(result)
+        self.assertEqual(mocked_api.call_count, 0)
 
     @mock.patch.object(SberPriceService, 'get_fair_price', return_value=None)
     @mock.patch.object(SberPriceService, 'get_moex_price', return_value=250.0)
