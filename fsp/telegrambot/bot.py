@@ -24,10 +24,7 @@ METHOD_TEXT = (
     "Для банков это базовый ориентир, потому что:\n"
     "• активы банков в основном финансовые и ближе к рыночной цене;\n"
     "• исторически P/B = 1 — часто встречаемый уровень для сектора;\n"
-    "• при P/B < 1 акция может быть недооцененной."
-)
-
-RANGE_TEXT = (
+    "• при P/B < 1 акция может быть недооцененной.\n\n"
     "📏 Почему диапазон P/B = 1.0–1.2?\n\n"
     "Этот диапазон считается зоной справедливой оценки для банков:\n"
     "• P/B = 1.0 — базовая справедливая стоимость;\n"
@@ -54,8 +51,7 @@ THESIS_TEXT = (
 def get_main_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📊 Текущая оценка", callback_data="current")],
-        [InlineKeyboardButton("🧠 Почему P/B = 1", callback_data="method")],
-        [InlineKeyboardButton("📏 Диапазон 1.0–1.2", callback_data="range")],
+        [InlineKeyboardButton("🧠 Методология P/B", callback_data="method")],
         [InlineKeyboardButton("📌 Инвесттезис", callback_data="thesis")],
     ])
 
@@ -67,8 +63,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Доступные команды:\n"
         "/info - текущая оценка\n"
         "/thesis - инвестиционный тезис\n"
-        "/method - почему P/B = 1\n"
-        "/range - почему диапазон 1.0–1.2\n"
+        "/method - методология P/B\n"
         "/help - справка"
     )
     await update.message.reply_text(welcome_msg, reply_markup=get_main_keyboard())
@@ -86,7 +81,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📊 /info - текущие данные по акции\n"
         "📌 /thesis - инвестиционный тезис\n"
         "🧠 /method - методология оценки P/B\n"
-        "📏 /range - диапазон справедливой оценки\n"
         "❓ /help - эта справка\n\n"
         "🔄 Данные обновляются автоматически с кешированием\n"
         "⏰ Кеш: 1 минута в торговые часы, 5 минут в остальное время\n\n"
@@ -107,11 +101,6 @@ async def thesis(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def method(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /method command"""
     await update.message.reply_text(METHOD_TEXT, reply_markup=get_main_keyboard())
-
-
-async def range_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /range command"""
-    await update.message.reply_text(RANGE_TEXT, reply_markup=get_main_keyboard())
 
 
 async def send_current_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -174,8 +163,6 @@ async def handle_menu_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await send_current_info(update, context)
     elif query.data == 'method':
         await query.message.reply_text(METHOD_TEXT, reply_markup=get_main_keyboard())
-    elif query.data == 'range':
-        await query.message.reply_text(RANGE_TEXT, reply_markup=get_main_keyboard())
     elif query.data == 'thesis':
         await query.message.reply_text(THESIS_TEXT, reply_markup=get_main_keyboard())
 
@@ -218,7 +205,6 @@ def run_bot():
         app.add_handler(CommandHandler("help", help_command))
         app.add_handler(CommandHandler("thesis", thesis))
         app.add_handler(CommandHandler("method", method))
-        app.add_handler(CommandHandler("range", range_info))
         app.add_handler(CallbackQueryHandler(handle_menu_action))
         
         # Handle unknown commands
